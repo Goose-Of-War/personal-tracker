@@ -7,22 +7,39 @@ import TransactionForm from "../components/TransactionForm.jsx";
 
 const PAGE_SIZE = 20;
 
+function currentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shiftMonth(month, delta) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(month) {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
 export default function Transactions() {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [month, setMonth] = useState(currentMonth());
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(undefined); // undefined = closed, null = new, object = edit
 
-  const load = async (targetPage = page) => {
+  const load = async (targetPage = page, targetMonth = month) => {
     setLoading(true);
     try {
       const [accountsData, txData] = await Promise.all([
         api.get("/accounts"),
-        api.get(`/transactions?page=${targetPage}&limit=${PAGE_SIZE}`),
+        api.get(`/transactions?page=${targetPage}&limit=${PAGE_SIZE}&month=${targetMonth}`),
       ]);
       setAccounts(accountsData);
       setTransactions(txData.items);
@@ -36,9 +53,9 @@ export default function Transactions() {
   };
 
   useEffect(() => {
-    load(1);
+    load(1, month);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [month]);
 
   const accountsById = new Map(accounts.map((a) => [a._id, a]));
 
@@ -48,18 +65,18 @@ export default function Transactions() {
     } else {
       await api.post("/transactions", payload);
     }
-    await load(page);
+    await load(page, month);
   };
 
   const handleDelete = async (transaction) => {
     await api.delete(`/transactions/${transaction._id}`);
     setEditing(undefined);
-    await load(page);
+    await load(page, month);
   };
 
   const goToPage = (p) => {
     if (p < 1 || p > totalPages) return;
-    load(p);
+    load(p, month);
   };
 
   return (
@@ -69,6 +86,16 @@ export default function Transactions() {
         <h1>Transactions</h1>
         <button onClick={() => setEditing(null)} disabled={accounts.length === 0}>
           + New transaction
+        </button>
+      </div>
+
+      <div className="month-nav">
+        <button className="button-secondary" onClick={() => setMonth((m) => shiftMonth(m, -1))}>
+          ← Prev
+        </button>
+        <span>{monthLabel(month)}</span>
+        <button className="button-secondary" onClick={() => setMonth((m) => shiftMonth(m, 1))}>
+          Next →
         </button>
       </div>
 

@@ -54,12 +54,21 @@ export async function listTransactions(req, res) {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
+  // Optional ?month=YYYY-MM filter, matched against `date` (not createdAt).
+  const query = { userId: req.userId };
+  if (req.query.month && /^\d{4}-\d{2}$/.test(req.query.month)) {
+    const [year, month] = req.query.month.split("-").map(Number);
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 1));
+    query.date = { $gte: start, $lt: end };
+  }
+
   const [items, total] = await Promise.all([
-    Transaction.find({ userId: req.userId })
+    Transaction.find(query)
       .sort({ date: -1, createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit),
-    Transaction.countDocuments({ userId: req.userId }),
+    Transaction.countDocuments(query),
   ]);
 
   res.json({ items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) });

@@ -337,6 +337,24 @@ label {
   color: var(--muted);
 }
 
+.month-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 1.5rem 1rem;
+  font-weight: 600;
+}
+
+.transaction-date-group { margin-bottom: 1rem; }
+.transaction-date-group__heading {
+  margin: 0 1.5rem 0.4rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
 .pagination {
   display: flex;
   justify-content: center;
