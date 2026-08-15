@@ -209,6 +209,8 @@ label {
   padding: 1.75rem;
   width: 360px;
   max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .overlay-card h2 { margin-top: 0; }
 .overlay-actions {
@@ -248,6 +250,7 @@ label {
 .transaction-row__category { font-weight: 600; text-transform: capitalize; }
 .transaction-row__subcategory { font-size: 0.8rem; color: var(--muted); }
 .transaction-row__accounts { font-size: 0.8rem; color: var(--muted); }
+.transaction-row__note { font-size: 0.8rem; color: var(--muted); font-style: italic; }
 .transaction-row__side {
   display: flex;
   flex-direction: column;

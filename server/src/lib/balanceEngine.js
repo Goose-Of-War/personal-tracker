@@ -15,6 +15,18 @@ function directedDelta(accountType, direction, amount) {
   return direction === "in" ? amount : -amount;
 }
 
+// Inverse of directedDelta: given an account's type and the balance delta a
+// direct edit should produce (newBalance - oldBalance), returns the
+// deposit/expense type + amount that produces that same delta through the
+// normal effect pipeline. Used to turn account-balance edits into a first-class
+// "Correction" transaction instead of writing `balance` directly - see §3a.
+export function correctionEffect(accountType, delta) {
+  if (accountType === "credit" || accountType === "loan") {
+    return delta > 0 ? { type: "expense", amount: delta } : { type: "deposit", amount: -delta };
+  }
+  return delta > 0 ? { type: "deposit", amount: delta } : { type: "expense", amount: -delta };
+}
+
 // Given a transaction-like object and a Map of accountId(string) -> Account doc,
 // returns the list of { accountId, delta } balance changes it causes.
 // Pure function - does not touch the database.

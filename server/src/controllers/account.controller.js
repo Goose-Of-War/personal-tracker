@@ -1,4 +1,7 @@
 import Account from "../models/Account.js";
+import Transaction from "../models/Transaction.js";
+import User from "../models/User.js";
+import { correctionEffect, computeEffects, applyEffects } from "../lib/balanceEngine.js";
 
 const TYPES = ["credit", "savings", "investment", "iou", "loan"];
 
@@ -64,12 +67,39 @@ export async function updateAccount(req, res) {
   const { name, type, balance, limit, note } = req.body;
   if (name !== undefined) account.name = name.trim();
   if (type !== undefined) account.type = type;
-  if (balance !== undefined) account.balance = balance;
   if (limit !== undefined) account.limit = (type ?? account.type) === "credit" ? limit : null;
   if (note !== undefined) account.note = note;
 
   await account.save();
-  res.json(account);
+
+  // Editing balance on an EXISTING account is recorded as a Correction transaction
+  // (§3a) rather than a direct field write, so balanceEngine.js stays the only place
+  // that ever changes a balance and the edit shows up as a normal, editable
+  // transaction. Initial balance at account creation is unaffected (see createAccount).
+  const delta = balance !== undefined ? balance - account.balance : 0;
+  if (delta !== 0) {
+    const user = await User.findById(req.userId).select("categories");
+    if (!user.categories.some((c) => c.name === "Correction")) {
+      user.categories.push({ name: "Correction", subCategories: [] });
+      await user.save();
+    }
+
+    const { type: txType, amount } = correctionEffect(account.type, delta);
+    const transaction = await Transaction.create({
+      userId: req.userId,
+      type: txType,
+      date: new Date(),
+      category: "Correction",
+      subCategory: "",
+      primaryAccount: account._id,
+      primaryAmount: amount,
+    });
+    const effects = computeEffects(transaction, new Map([[String(account._id), account]]));
+    await applyEffects(effects);
+  }
+
+  const fresh = await Account.findById(account._id);
+  res.json(fresh);
 }
 
 // Soft-delete only, per spec: archived accounts are hidden but transaction history

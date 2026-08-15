@@ -26,6 +26,7 @@ export default function TransactionForm({ transaction, accounts, categories = []
     split: transaction?.type === "expense" && !!transaction?.secondaryAccount,
     secondaryAccount: transaction?.secondaryAccount ?? "",
     secondaryAmount: transaction?.secondaryAmount != null ? toDisplay(transaction.secondaryAmount) : "",
+    note: transaction?.note ?? "",
   });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +58,7 @@ export default function TransactionForm({ transaction, accounts, categories = []
         subCategory: form.subCategory,
         primaryAccount: form.primaryAccount,
         primaryAmount: toSmallestUnit(form.primaryAmount || "0"),
+        note: form.note,
       };
       if (form.type === "transfer") {
         payload.secondaryAccount = form.secondaryAccount;
@@ -182,6 +184,11 @@ export default function TransactionForm({ transaction, accounts, categories = []
             </label>
           </>
         )}
+
+        <label>
+          Note
+          <input value={form.note} onChange={update("note")} placeholder="Optional" />
+        </label>
 
         {error && <p className="form-error">{error}</p>}
 

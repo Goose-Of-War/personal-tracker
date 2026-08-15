@@ -12,6 +12,7 @@ const transactionSchema = new mongoose.Schema(
     primaryAmount: { type: Number, required: true },
     secondaryAccount: { type: mongoose.Schema.Types.ObjectId, ref: "Account", default: null },
     secondaryAmount: { type: Number, default: null },
+    note: { type: String, default: "", trim: true },
   },
   { timestamps: true } // createdAt (audit trail) is separate from `date` (user-editable), per spec
 );

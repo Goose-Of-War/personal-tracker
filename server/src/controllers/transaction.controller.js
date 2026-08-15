@@ -72,7 +72,7 @@ export async function getTransaction(req, res) {
 }
 
 export async function createTransaction(req, res) {
-  const { type, date, category = "", subCategory = "", primaryAccount, primaryAmount, secondaryAccount, secondaryAmount } = req.body;
+  const { type, date, category = "", subCategory = "", primaryAccount, primaryAmount, secondaryAccount, secondaryAmount, note = "" } = req.body;
 
   const candidate = {
     type,
@@ -81,6 +81,7 @@ export async function createTransaction(req, res) {
     subCategory,
     primaryAccount,
     primaryAmount,
+    note,
     secondaryAccount:
       type === "transfer" ? secondaryAccount : type === "expense" ? secondaryAccount || null : null,
     secondaryAmount:
@@ -147,6 +148,7 @@ export async function updateTransaction(req, res) {
     date: body.date !== undefined ? new Date(body.date) : existing.date,
     category: body.category ?? existing.category,
     subCategory: body.subCategory ?? existing.subCategory,
+    note: body.note ?? existing.note,
     primaryAccount: body.primaryAccount ?? existing.primaryAccount,
     primaryAmount: body.primaryAmount ?? existing.primaryAmount,
     secondaryAccount: mergedSecondaryAccount,

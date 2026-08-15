@@ -24,6 +24,7 @@ export default function TransactionList({ transactions, accountsById, onSelect }
                 ? `${accountName(accountsById, t.primaryAccount)} (split w/ ${accountName(accountsById, t.secondaryAccount)})`
                 : accountName(accountsById, t.primaryAccount)}
             </span>
+            {t.note && <span className="transaction-row__note">{t.note}</span>}
           </div>
           <div className="transaction-row__side">
             <span className="transaction-row__amount">{toDisplay(t.primaryAmount)}</span>
