@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import User from "../models/User.js";
+import Transaction from "../models/Transaction.js";
 import { createSession, destroySession, SESSION_COOKIE_NAME, cookieOptions } from "../lib/session.js";
 
 const SALT_ROUNDS = 12;
@@ -84,10 +85,11 @@ export async function me(req, res) {
   res.json({ id: user._id, name: user.name, username: user.username, categories: user.categories });
 }
 
-// Replaces the user's whole categories list (Profile page). Whether removing a
-// category/subCategory still referenced by existing transactions should be blocked
-// is an open decision (see readme) - currently allowed silently; those transactions
-// simply keep their existing (now unlisted) category/subCategory text untouched.
+// Replaces the user's whole categories list (Profile page). Per the confirmed
+// decision (§1a): removing a category or subCategory still referenced by existing
+// transactions cascades - the matching field is cleared (set to "") on those
+// transactions rather than left as orphaned text. Removing a whole category clears
+// both category+subCategory; removing just a subCategory clears only that field.
 export async function updateCategories(req, res) {
   const { categories } = req.body;
   if (!Array.isArray(categories)) {
@@ -111,7 +113,36 @@ export async function updateCategories(req, res) {
     subCategories: [...new Set(c.subCategories.map((s) => s.trim()).filter(Boolean))],
   }));
 
+  const before = await User.findById(req.userId).select("categories");
+  if (!before) return res.status(404).json({ error: "User not found" });
+
+  const newByName = new Map(cleaned.map((c) => [c.name, c]));
+  const removedCategoryNames = [];
+  const removedSubcategoriesByCategory = [];
+  for (const oldCat of before.categories) {
+    const stillExists = newByName.get(oldCat.name);
+    if (!stillExists) {
+      removedCategoryNames.push(oldCat.name);
+    } else {
+      const removedSubs = oldCat.subCategories.filter((s) => !stillExists.subCategories.includes(s));
+      if (removedSubs.length > 0) removedSubcategoriesByCategory.push({ category: oldCat.name, removedSubs });
+    }
+  }
+
   const user = await User.findByIdAndUpdate(req.userId, { categories: cleaned }, { new: true }).select("categories");
-  if (!user) return res.status(404).json({ error: "User not found" });
+
+  if (removedCategoryNames.length > 0) {
+    await Transaction.updateMany(
+      { userId: req.userId, category: { $in: removedCategoryNames } },
+      { $set: { category: "", subCategory: "" } }
+    );
+  }
+  for (const { category, removedSubs } of removedSubcategoriesByCategory) {
+    await Transaction.updateMany(
+      { userId: req.userId, category, subCategory: { $in: removedSubs } },
+      { $set: { subCategory: "" } }
+    );
+  }
+
   res.json({ categories: user.categories });
 }

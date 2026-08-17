@@ -24,15 +24,16 @@ function validateCandidate(tx, userCategories = null) {
       return "secondaryAmount must be a positive integer (smallest currency unit)";
     }
   }
-  // Split expense: secondaryAccount/secondaryAmount are optional on `expense`, but if
-  // a secondaryAccount is given (the "split with" account) secondaryAmount is required -
-  // unlike transfer, there's no sensible default for a partial split share.
+  // Split expense: secondaryAccount/secondaryAmount are optional on `expense`. If a
+  // secondaryAccount is given but no amount, the caller defaults secondaryAmount to 0
+  // (see createTransaction/updateTransaction) - i.e. an unspecified split is a no-op,
+  // not an error. Only reject an explicit negative/non-integer value here.
   if (tx.type === "expense" && tx.secondaryAccount) {
     if (String(tx.secondaryAccount) === String(tx.primaryAccount)) {
       return "secondaryAccount must differ from primaryAccount";
     }
-    if (typeof tx.secondaryAmount !== "number" || !Number.isInteger(tx.secondaryAmount) || tx.secondaryAmount <= 0) {
-      return "secondaryAmount (the split partner's share) must be a positive integer when splitting an expense";
+    if (typeof tx.secondaryAmount !== "number" || !Number.isInteger(tx.secondaryAmount) || tx.secondaryAmount < 0) {
+      return "secondaryAmount (the split partner's share) must be a non-negative integer when splitting an expense";
     }
   }
   if (!tx.date || isNaN(new Date(tx.date).getTime())) return "date is invalid";
@@ -97,7 +98,7 @@ export async function createTransaction(req, res) {
       type === "transfer"
         ? secondaryAmount ?? primaryAmount
         : type === "expense" && secondaryAccount
-        ? secondaryAmount
+        ? secondaryAmount ?? 0
         : null,
   };
 
@@ -147,9 +148,9 @@ export async function updateTransaction(req, res) {
       : mergedType === "expense" && mergedSecondaryAccount
       ? body.secondaryAmount !== undefined
         ? body.secondaryAmount
-        : existing.type === "expense"
+        : existing.type === "expense" && existing.secondaryAmount != null
         ? existing.secondaryAmount
-        : null
+        : 0
       : null;
 
   const merged = {

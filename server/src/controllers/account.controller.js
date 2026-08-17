@@ -4,6 +4,8 @@ import User from "../models/User.js";
 import { correctionEffect, computeEffects, applyEffects } from "../lib/balanceEngine.js";
 
 const TYPES = ["credit", "savings", "investment", "iou", "loan"];
+// `limit` is only meaningful for these two account types (§2 of the spec).
+const LIMIT_TYPES = ["credit", "loan"];
 
 function validateAccountInput(body, { partial = false } = {}) {
   const { name, type, balance, limit, note } = body;
@@ -45,7 +47,7 @@ export async function createAccount(req, res) {
     name: name.trim(),
     type,
     balance,
-    limit: type === "credit" ? limit : null,
+    limit: LIMIT_TYPES.includes(type) ? limit : null,
     note,
   });
   res.status(201).json(account);
@@ -67,7 +69,15 @@ export async function updateAccount(req, res) {
   const { name, type, balance, limit, note } = req.body;
   if (name !== undefined) account.name = name.trim();
   if (type !== undefined) account.type = type;
-  if (limit !== undefined) account.limit = (type ?? account.type) === "credit" ? limit : null;
+  // Keep `limit` consistent with the account's current type even when this
+  // PATCH doesn't explicitly touch `limit` itself - e.g. switching a credit/loan
+  // account to savings must clear a leftover limit, and vice versa a request
+  // can still explicitly set one for a newly credit/loan account.
+  if (limit !== undefined) {
+    account.limit = LIMIT_TYPES.includes(account.type) ? limit : null;
+  } else if (type !== undefined && !LIMIT_TYPES.includes(account.type)) {
+    account.limit = null;
+  }
   if (note !== undefined) account.note = note;
 
   await account.save();
