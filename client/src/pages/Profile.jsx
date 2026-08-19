@@ -96,6 +96,7 @@ export default function Profile() {
               <input
                 value={newSubCategory[c.name] || ""}
                 onChange={(e) => setNewSubCategory((s) => ({ ...s, [c.name]: e.target.value }))}
+                onKeyDown={(e) => e.key === "Enter" && addSubCategory(c.name)}
                 placeholder="New sub-category"
               />
               <button type="button" className="button-secondary" onClick={() => addSubCategory(c.name)} disabled={saving}>
@@ -111,6 +112,7 @@ export default function Profile() {
           <input
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addCategory()}
             placeholder="New category name"
           />
           <button type="button" onClick={addCategory} disabled={saving}>

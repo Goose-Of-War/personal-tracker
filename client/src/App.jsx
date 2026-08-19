@@ -6,6 +6,7 @@ import Home from "./pages/Home.jsx";
 import Accounts from "./pages/Accounts.jsx";
 import Transactions from "./pages/Transactions.jsx";
 import Profile from "./pages/Profile.jsx";
+import Legal from "./pages/Legal.jsx";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginSignup />} />
+          <Route path="/legal" element={<Legal />} />
           <Route
             path="/"
             element={

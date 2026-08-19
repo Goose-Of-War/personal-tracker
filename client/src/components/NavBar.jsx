@@ -19,6 +19,7 @@ export default function NavBar() {
         <NavLink to="/accounts">Accounts</NavLink>
         <NavLink to="/transactions">Transactions</NavLink>
         <NavLink to="/profile">Profile</NavLink>
+        <NavLink to="/legal">Legal</NavLink>
       </div>
       <div className="navbar__user">
         {user && <span>{user.name}</span>}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function LoginSignup() {
@@ -86,6 +86,10 @@ export default function LoginSignup() {
         >
           {mode === "login" ? "Need an account? Sign up" : "Already have an account? Log in"}
         </button>
+
+        <p className="page-hint">
+          By using this app you agree to the <Link to="/legal">Privacy Policy &amp; Terms of Use</Link>.
+        </p>
       </form>
     </div>
   );
