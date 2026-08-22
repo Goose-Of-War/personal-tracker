@@ -68,7 +68,8 @@ export async function listTransactions(req, res) {
     Transaction.find(query)
       .sort({ date: -1, createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit),
+      .limit(limit)
+      .lean(),
     Transaction.countDocuments(query),
   ]);
 

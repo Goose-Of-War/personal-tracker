@@ -1,21 +1,10 @@
-import { useEffect, useState } from "react";
-import { api } from "../api/client.js";
 import { toDisplay } from "../lib/money.js";
 import { groupAccountsByType } from "../lib/accountTypes.js";
+import { useAccounts } from "../context/AccountsContext.jsx";
 import NavBar from "../components/NavBar.jsx";
 
 export default function Home() {
-  const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    api
-      .get("/accounts")
-      .then(setAccounts)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const { accounts, loading, error } = useAccounts();
 
   // Category totals instead of one combined net worth figure - a large loan
   // balance made a single net number swing painfully negative to look at.

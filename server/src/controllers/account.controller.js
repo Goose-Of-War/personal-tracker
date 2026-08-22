@@ -33,7 +33,9 @@ function validateAccountInput(body, { partial = false } = {}) {
 }
 
 export async function listAccounts(req, res) {
-  const accounts = await Account.find({ userId: req.userId, archived: false }).sort({ createdAt: 1 });
+  const accounts = await Account.find({ userId: req.userId, archived: false })
+    .sort({ createdAt: 1 })
+    .lean();
   res.json(accounts);
 }
 

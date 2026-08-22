@@ -1,31 +1,14 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api } from "../api/client.js";
 import AccountCard from "../components/AccountCard.jsx";
 import AccountEditOverlay from "../components/AccountEditOverlay.jsx";
 import NavBar from "../components/NavBar.jsx";
 import { groupAccountsByType } from "../lib/accountTypes.js";
+import { useAccounts } from "../context/AccountsContext.jsx";
 
 export default function Accounts() {
-  const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { accounts, loading, error, refresh } = useAccounts();
   const [editing, setEditing] = useState(undefined); // undefined = closed, null = new, object = edit
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const data = await api.get("/accounts");
-      setAccounts(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
 
   const handleSave = async (payload) => {
     if (editing && editing._id) {
@@ -33,13 +16,13 @@ export default function Accounts() {
     } else {
       await api.post("/accounts", payload);
     }
-    await load();
+    await refresh();
   };
 
   const handleArchive = async (account) => {
     await api.delete(`/accounts/${account._id}`);
     setEditing(undefined);
-    await load();
+    await refresh();
   };
 
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useAccounts } from "../context/AccountsContext.jsx";
 import NavBar from "../components/NavBar.jsx";
 import TransactionList from "../components/TransactionList.jsx";
 import TransactionForm from "../components/TransactionForm.jsx";
@@ -25,7 +26,7 @@ function monthLabel(month) {
 
 export default function Transactions() {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState([]);
+  const { accounts, refresh: refreshAccounts } = useAccounts();
   const [transactions, setTransactions] = useState([]);
   const [month, setMonth] = useState(currentMonth());
   const [page, setPage] = useState(1);
@@ -37,11 +38,7 @@ export default function Transactions() {
   const load = async (targetPage = page, targetMonth = month) => {
     setLoading(true);
     try {
-      const [accountsData, txData] = await Promise.all([
-        api.get("/accounts"),
-        api.get(`/transactions?page=${targetPage}&limit=${PAGE_SIZE}&month=${targetMonth}`),
-      ]);
-      setAccounts(accountsData);
+      const txData = await api.get(`/transactions?page=${targetPage}&limit=${PAGE_SIZE}&month=${targetMonth}`);
       setTransactions(txData.items);
       setTotalPages(txData.totalPages);
       setPage(txData.page);
@@ -65,13 +62,13 @@ export default function Transactions() {
     } else {
       await api.post("/transactions", payload);
     }
-    await load(page, month);
+    await Promise.all([load(page, month), refreshAccounts()]);
   };
 
   const handleDelete = async (transaction) => {
     await api.delete(`/transactions/${transaction._id}`);
     setEditing(undefined);
-    await load(page, month);
+    await Promise.all([load(page, month), refreshAccounts()]);
   };
 
   const goToPage = (p) => {

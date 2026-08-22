@@ -2,7 +2,9 @@
 
 Purpose: single source of truth for building this app. Any agent (Claude or otherwise)
 picking up this project should read this fully before writing code, and should update
-it if a decision changes.
+it if a decision changes. Keep this current every session, not just on big decisions —
+new pages, changed UX behavior (e.g. a redirect rule), and anything else a future
+session would otherwise have to re-derive from the code.
 
 ## Tech Stack
 - Node.js v20+
@@ -218,6 +220,11 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
 1. **Login / Signup page**
    - Toggle between login and signup forms.
    - On successful auth → redirect to Home.
+   - If a valid session cookie already exists (i.e. `/auth/me` resolves to a
+     user), redirect straight to Home instead of showing the form — no
+     reason to make an already-logged-in visitor log in again.
+   - Links to the Legal page (Privacy Policy & Terms of Use), framed as
+     "using this app means you agree to it."
 
 2. **Home page**
    - Summary section shows separate category totals rather than one combined net
@@ -260,6 +267,13 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
    - Exact route/endpoint for updating categories not yet fixed (e.g. `PATCH
      /api/auth/categories` or a small standalone user-routes file) — implementer's
      choice, doesn't change the data shape.
+   - The "new category" and "new sub-category" inputs submit on Enter, not just
+     via their Add buttons.
+
+6. **Legal page** (new)
+   - Static Privacy Policy & Terms of Use content. Public route, reachable
+     without logging in. Linked from the Login/Signup page and from the
+     navbar for logged-in users.
 
 ---
 
@@ -408,6 +422,40 @@ deal with.
   you'd rather swap it for something else before deploying.
 
 ---
+
+## 8. Performance / Caching
+
+Added after "site slow on load, especially data fetch" was reported.
+
+- **Shared accounts cache (client)** — `client/src/context/AccountsContext.jsx`.
+  Home, Accounts, and Transactions all need the same accounts list; before this
+  each page independently re-fetched `GET /api/accounts` on every mount, so
+  navigating Home → Transactions → Accounts → Home did 4 redundant round
+  trips for data that hadn't changed. Now fetched once per login and shared;
+  any mutation that changes account balances (account create/edit/archive,
+  and transaction create/edit/delete, since transactions mutate balances via
+  `balanceEngine`) calls the context's `refresh()` to keep it correct. The
+  paginated/filtered transactions list itself is intentionally NOT cached
+  this way — it's page/month-scoped, low reuse across navigation, not worth
+  the complexity yet.
+- **`.lean()` on read-only list queries** (`account.controller.js`
+  `listAccounts`, `transaction.controller.js` `listTransactions`) — skips
+  Mongoose document hydration on data that's only ever `res.json()`'d, never
+  mutated after fetching. Minor, safe, no behavior change.
+
+### Suspected bigger factor — not fixed here, needs your input
+The above reduces redundant requests and per-request overhead, but the
+likely dominant cause of "slow, especially data fetch" is infrastructure,
+not app code: Vercel serverless cold starts plus MongoDB Atlas round-trip
+latency, which gets worse if the Atlas cluster's region is far from
+wherever Vercel is running the function. Worth checking:
+- Which AWS/GCP region the Atlas cluster is in vs. Vercel's function region
+  (Vercel project settings → Functions → Region) — mismatched regions can
+  add real latency on every cold request.
+- Atlas M0 (free tier) is also just slower than paid tiers; if this remains
+  slow after region-matching, that's the next thing to look at.
+Not changed here since it's an infra/account setting, not something to
+guess at from code.
 
 ## Open decisions / flagged for later (not blocking v1)
 - Whether credit balance should hard-cap at `limit` or just warn.

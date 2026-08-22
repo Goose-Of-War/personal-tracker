@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function LoginSignup() {
@@ -7,8 +7,12 @@ export default function LoginSignup() {
   const [form, setForm] = useState({ name: "", username: "", password: "", confirmPassword: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { login, signup } = useAuth();
+  const { user, loading, login, signup } = useAuth();
   const navigate = useNavigate();
+
+  // Already logged in (valid session cookie) — no reason to show the
+  // login/signup form, send them straight home.
+  if (!loading && user) return <Navigate to="/" replace />;
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
