@@ -72,8 +72,10 @@ export default function Profile() {
     );
   };
 
-  // Drag-and-drop reorder (HTML5 DnD, no library): dragging a category over
-  // another swaps their positions in the array, then persists the new order.
+  // Drag-and-drop reorder (HTML5 DnD, no library). State and DB are updated only
+  // on DROP (mouse release), not on every dragover — so dragging is lag-free and
+  // the item can move more than one position. `dragIndex` = source while dragging;
+  // `toIndex` = the drop target computed once on release.
   const reorderCategories = (fromIndex, toIndex) => {
     if (fromIndex === toIndex) return;
     const next = [...categories];
@@ -119,8 +121,13 @@ export default function Profile() {
             draggable
             onDragStart={() => setDragIndex(index)}
             onDragOver={(e) => {
+              // Required so a valid drop target registers; no reorder here (too laggy).
+              e.preventDefault();
+            }}
+            onDrop={(e) => {
               e.preventDefault();
               if (dragIndex !== null && dragIndex !== index) reorderCategories(dragIndex, index);
+              else setDragIndex(null);
             }}
             onDragEnd={() => setDragIndex(null)}
           >
