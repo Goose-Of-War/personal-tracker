@@ -6,6 +6,7 @@ import LoginSignup from "./pages/LoginSignup.jsx";
 import Home from "./pages/Home.jsx";
 import Accounts from "./pages/Accounts.jsx";
 import Transactions from "./pages/Transactions.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 import Profile from "./pages/Profile.jsx";
 import Legal from "./pages/Legal.jsx";
 
@@ -38,6 +39,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Transactions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
                 </ProtectedRoute>
               }
             />

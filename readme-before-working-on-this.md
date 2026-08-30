@@ -494,7 +494,7 @@ complaints (e.g. `.account-grid`/`.summary-grid` column minimums weren't
 revisited) — scoped to exactly what was diagnosed, not a general responsive
 redesign.
 
-## 10. Dashboard (PLANNED, not yet implemented)
+## 10. Dashboard — IMPLEMENTED (not yet run against a live MongoDB)
 
 Monthly transactions dashboard — a different lens from Home (which shows
 current balances by account type). This shows "what happened with money
@@ -528,19 +528,31 @@ charts. Separate page/nav entry, not folded into Home.
 4. **Type comparison** — simple bar chart: expenses vs. deposits vs.
    transfer volume.
 
-### Technical shape (planned)
-- New backend aggregation endpoint(s) — MongoDB `$group` by category, by
-  day, by type — so the server does the math, not the browser pulling
-  every transaction and summing in JS. Consistent with the performance
-  work already done (§8).
-- New client dependency: `recharts`.
-- Month-navigation logic currently living inside `Transactions.jsx` gets
-  extracted into something shared, since Dashboard needs the identical
-  prev/next-month control rather than a duplicated copy.
+### Implementation
+- **Backend**: `GET /api/dashboard?month=YYYY-MM` (`dashboard.controller.js`
+  `getDashboard`), mounted in `app.js`. Single MongoDB `$facet` aggregation
+  per request — one round trip computes totals-by-type, expenses-by-category,
+  deposits-by-category, and daily expense totals together, matched against
+  the same `date` range convention `listTransactions` already uses. Missing/
+  invalid `month` defaults to the current UTC month server-side (unlike
+  `listTransactions`, where `month` is optional and unfiltered-if-absent —
+  Dashboard always needs a timeframe, so it defaults instead of omitting the
+  filter).
+- **Frontend**: new `client/src/pages/Dashboard.jsx` + `/dashboard` route +
+  navbar link. Uses `recharts` (new dependency, added to
+  `client/package.json` — not yet `npm install`'d/build-verified, see log).
+  Month navigation reuses the extracted `client/src/lib/monthNav.js`
+  (`currentMonth`/`shiftMonth`/`monthLabel` — pulled out of `Transactions.jsx`,
+  which now imports from there too instead of keeping its own copy).
+- Summary strip (expenses/deposits/transfers/net) + category pie chart with
+  an expenses/deposits toggle and a table alongside it (exact figures, since
+  charts alone aren't precise) + daily-expense bar chart + a
+  expenses-vs-deposits-vs-transfers bar chart. All money values go through
+  the existing `formatMoney()` (currency-aware).
 
-NOT decided yet / not needed for this plan: exact route names, exact
-endpoint shapes/response schemas, exact component boundaries — left for
-implementation time, not blocking the concept.
+NOT decided/needed for this plan: exact route names, exact endpoint
+response schemas, exact component boundaries — resolved during
+implementation as above.
 - **Currency**: one fixed currency per user, default **INR**, stored on the
   `User` model (`currency`, 3-letter code), editable via `PATCH
   /api/auth/currency` and a dropdown on the Profile page (INR/USD/EUR/GBP —

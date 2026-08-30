@@ -18,6 +18,7 @@ export default function NavBar() {
         </NavLink>
         <NavLink to="/accounts">Accounts</NavLink>
         <NavLink to="/transactions">Transactions</NavLink>
+        <NavLink to="/dashboard">Dashboard</NavLink>
         <NavLink to="/profile">Profile</NavLink>
         <NavLink to="/legal">Legal</NavLink>
       </div>

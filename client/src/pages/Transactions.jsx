@@ -5,24 +5,9 @@ import { useAccounts } from "../context/AccountsContext.jsx";
 import NavBar from "../components/NavBar.jsx";
 import TransactionList from "../components/TransactionList.jsx";
 import TransactionForm from "../components/TransactionForm.jsx";
+import { currentMonth, shiftMonth, monthLabel } from "../lib/monthNav.js";
 
 const PAGE_SIZE = 20;
-
-function currentMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function shiftMonth(month, delta) {
-  const [y, m] = month.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthLabel(month) {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
 
 export default function Transactions() {
   const { user } = useAuth();
