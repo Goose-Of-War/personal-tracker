@@ -529,14 +529,18 @@ charts. Separate page/nav entry, not folded into Home.
 1. **Monthly summary strip** — total expenses, total deposits, total
    transfer volume, net change, for the selected month. Same visual
    pattern as Home's summary cards, different numbers/timeframe.
-2. **Category breakdown** — donut/pie chart of expense-by-category for the
-   month (deposits get their own chart or a toggle — expenses is the more
-   useful default view), plus a table alongside it for exact figures
-   (charts alone are bad at exact numbers). Pie **labels show the category
-   name + its percentage** of the month's total (e.g. "Food 24.5%");
-   the table shows category + money total. Click-through to subcategories.
+2. **Category breakdown** — donut/pie charts of expense-by-category **and**
+   deposit-by-category for the month, shown **side by side (both at once — no
+   toggle)**, each with a table alongside it for exact figures. The pie charts
+   have **no labels** (they became unreadable/crowded with very few
+   transactions); instead each table has a **Percentage column** (share of that
+   chart's total) and a **Total row** at the end (the sum). Click-through to
+   subcategories.
 3. **Daily trend** — **line chart** of daily expense totals across the month's
-   days (a line, not bars).
+   days (a line, not bars). The line is **not smoothed** (straight segments,
+   no monotone curve), each data point gets a **square marker**, and a
+   horizontal **average monthly expense** reference line shows the mean of all
+   logged days' expenses.
 4. **Type comparison** — simple bar chart: expenses vs. deposits vs.
    transfer volume.
 
@@ -559,11 +563,13 @@ recharts' slow default, so deposit/expense transitions feel snappier.
   Month navigation reuses the extracted `client/src/lib/monthNav.js`
   (`currentMonth`/`shiftMonth`/`monthLabel` — pulled out of `Transactions.jsx`,
   which now imports from there too instead of keeping its own copy).
-- Summary strip (expenses/deposits/transfers/net) + category pie chart with
-  an expenses/deposits toggle and a table alongside it (exact figures, since
-  charts alone aren't precise) + daily-expense bar chart + a
-  expenses-vs-deposits-vs-transfers bar chart. All money values go through
-  the existing `formatMoney()` (currency-aware).
+- Summary strip (expenses/deposits/transfers/net) + two category pie charts —
+   one for expenses and one for deposits, shown side by side with **no toggle** —
+   each with a table beside it (category, money total, percentage of that
+   chart's total, plus a Total row; no pie labels) + daily-expense line chart
+   (not smoothed, square point markers, average line) + an
+   expenses-vs-deposits-vs-transfers bar chart. All money values go through
+   the existing `formatMoney()` (currency-aware).
 
 NOT decided/needed for this plan: exact route names, exact endpoint
 response schemas, exact component boundaries — resolved during
@@ -607,13 +613,16 @@ Not yet run against a live MongoDB (see claude-records.log) — syntax-checked o
 
 ## Implemented (previously pending, now done)
 All five requested on 2026-08-30 have been implemented:
-1. **Pie-chart labels show category name + percentage.** Dashboard pie labels now
-   render `"<category> <pct>%"` (percentage of the month's total); the breakdown
-   table still shows category + money total.
+1. **Two category pie charts (expenses + deposits), no toggle; tables with a
+   Percentage column and a Total row.** Removed the single-toggled pie and its
+   labels (unreadable with few transactions); both expense and deposit pies now
+   render side by side, each table showing category, money total, and percentage,
+   ending with a Total row.
 2. **Faster chart animations.** `CHART_ANIMATION_MS = 500` in `Dashboard.jsx`,
    applied to the pie, daily-line and type-comparison charts.
-3. **Daily amounts as a LINE chart.** Daily-expenses chart is now a `LineChart`
-   instead of bars.
+3. **Daily amounts as a LINE chart** (not smooth), each data point with a
+   **square marker**, plus a horizontal **average monthly expense** reference
+   line (mean of all logged days).
 4. **Correction checkbox.** Account-edit overlay (existing accounts) shows "Note
    the correction as a transaction", default checked (true); checked → Correction
    transaction, unchecked → legacy direct balance write (see §3a update below).

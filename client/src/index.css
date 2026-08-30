@@ -175,7 +175,18 @@ label {
 .toggle-group { display: flex; gap: 0.5rem; }
 .dashboard-breakdown {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.dashboard-breakdown__title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 1rem;
+}
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   align-items: start;
 }
@@ -186,7 +197,9 @@ label {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border);
 }
+.dashboard-table__total { font-weight: 700; }
 @media (max-width: 640px) {
+  .dashboard-columns { grid-template-columns: 1fr; }
   .dashboard-breakdown { grid-template-columns: 1fr; }
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import NavBar from "../components/NavBar.jsx";
@@ -9,6 +9,48 @@ import { formatMoney } from "../lib/money.js";
 const SLICE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#06b6d4", "#a855f7", "#ec4899", "#84cc16"];
 const CHART_ANIMATION_MS = 500;
 
+function BreakdownBlock({ title, rows, currency }) {
+  const total = rows.reduce((sum, row) => sum + row.total, 0);
+  return (
+    <div className="dashboard-breakdown">
+      <h3 className="dashboard-breakdown__title">{title}</h3>
+      <ResponsiveContainer width="100%" height={260}>
+        <PieChart>
+          <Pie data={rows} dataKey="total" nameKey="category" outerRadius={90} animationDuration={CHART_ANIMATION_MS}>
+            {rows.map((_, i) => (
+              <Cell key={i} fill={SLICE_COLORS[i % SLICE_COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(value) => formatMoney(value, currency)} />
+        </PieChart>
+      </ResponsiveContainer>
+      <table className="dashboard-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Total</th>
+            <th>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.category}>
+              <td>{row.category}</td>
+              <td>{formatMoney(row.total, currency)}</td>
+              <td>{total > 0 ? ((row.total / total) * 100).toFixed(1) : "0"}%</td>
+            </tr>
+          ))}
+          <tr className="dashboard-table__total">
+            <td>Total</td>
+            <td>{formatMoney(total, currency)}</td>
+            <td>100%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const currency = user?.currency || "INR";
@@ -16,7 +58,6 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [breakdownView, setBreakdownView] = useState("expenses"); // 'expenses' | 'deposits'
 
   useEffect(() => {
     setLoading(true);
@@ -27,10 +68,11 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, [month]);
 
-  const breakdown = data?.categoryBreakdown?.[breakdownView] ?? [];
-  const breakdownTotal = breakdown.reduce((sum, row) => sum + row.total, 0);
+  const expenseBreakdown = data?.categoryBreakdown?.expenses ?? [];
+  const depositBreakdown = data?.categoryBreakdown?.deposits ?? [];
   const dailyTrend = data?.dailyTrend ?? [];
   const summary = data?.summary;
+  const avgDailyExpense = dailyTrend.length > 0 ? dailyTrend.reduce((sum, d) => sum + d.total, 0) / dailyTrend.length : 0;
 
   const typeComparisonData = summary
     ? [
@@ -84,62 +126,22 @@ export default function Dashboard() {
           <section className="page-section">
             <div className="page-section__header">
               <h2>Category breakdown</h2>
-              <div className="toggle-group">
-                <button
-                  className={breakdownView === "expenses" ? "" : "button-secondary"}
-                  onClick={() => setBreakdownView("expenses")}
-                >
-                  Expenses
-                </button>
-                <button
-                  className={breakdownView === "deposits" ? "" : "button-secondary"}
-                  onClick={() => setBreakdownView("deposits")}
-                >
-                  Deposits
-                </button>
-              </div>
             </div>
 
-            {breakdown.length === 0 ? (
-              <p className="page-hint">No {breakdownView} recorded this month.</p>
+            {expenseBreakdown.length === 0 && depositBreakdown.length === 0 ? (
+              <p className="page-hint">No expenses or deposits recorded this month.</p>
             ) : (
-              <div className="dashboard-breakdown">
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie
-                      data={breakdown}
-                      dataKey="total"
-                      nameKey="category"
-                      outerRadius={100}
-                      animationDuration={CHART_ANIMATION_MS}
-                      label={({ category, total }) => {
-                        const pct = breakdownTotal > 0 ? ((total / breakdownTotal) * 100).toFixed(1) : "0";
-                        return `${category} ${pct}%`;
-                      }}
-                    >
-                      {breakdown.map((_, i) => (
-                        <Cell key={i} fill={SLICE_COLORS[i % SLICE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => formatMoney(value, currency)} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <table className="dashboard-table">
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {breakdown.map((row) => (
-                      <tr key={row.category}>
-                        <td>{row.category}</td>
-                        <td>{formatMoney(row.total, currency)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="dashboard-columns">
+                {expenseBreakdown.length > 0 ? (
+                  <BreakdownBlock title="Expenses" rows={expenseBreakdown} currency={currency} />
+                ) : (
+                  <p className="page-hint">No expenses recorded this month.</p>
+                )}
+                {depositBreakdown.length > 0 ? (
+                  <BreakdownBlock title="Deposits" rows={depositBreakdown} currency={currency} />
+                ) : (
+                  <p className="page-hint">No deposits recorded this month.</p>
+                )}
               </div>
             )}
           </section>
@@ -154,7 +156,13 @@ export default function Dashboard() {
                   <XAxis dataKey="day" />
                   <YAxis tickFormatter={(v) => formatMoney(v, currency)} width={80} />
                   <Tooltip formatter={(value) => formatMoney(value, currency)} labelFormatter={(d) => `Day ${d}`} />
-                  <Line type="monotone" dataKey="total" name="Total" stroke="#6366f1" strokeWidth={2} dot={false} animationDuration={CHART_ANIMATION_MS} />
+                  <ReferenceLine
+                    y={avgDailyExpense}
+                    stroke="#8f2f4f"
+                    strokeDasharray="4 4"
+                    label={{ value: "Avg", position: "insideTopRight" }}
+                  />
+                  <Line dataKey="total" name="Total" stroke="#6366f1" strokeWidth={2} dot={{ r: 3, shape: "square" }} animationDuration={CHART_ANIMATION_MS} />
                 </LineChart>
               </ResponsiveContainer>
             )}
