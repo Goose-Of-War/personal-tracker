@@ -123,7 +123,7 @@ export default function TransactionForm({ transaction, accounts, categories = []
             Sub-category
             <select value={form.subCategory} onChange={update("subCategory")}>
               <option value="">None</option>
-              {selectedCategory.subCategories.map((s) => (
+              {[...selectedCategory.subCategories].sort((a, b) => a.localeCompare(b)).map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>

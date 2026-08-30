@@ -303,6 +303,14 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
      choice, doesn't change the data shape.
    - The "new category" and "new sub-category" inputs submit on Enter, not just
      via their Add buttons.
+   - **Categories are sortable by user preference via drag-and-drop** — the user
+     can reorder their categories; the desired display order is stored (the array
+     order in `categories[]`, which `PATCH /api/auth/categories` preserves), so
+     the pickers/Profile listing reflect that order. Implemented via HTML5
+     drag-and-drop (no library) on the Profile page.
+   - **Subcategories are lexicographically sorted** (alphabetical) rather than
+     creation order — sorted at render in the Profile page and the transaction
+     form's sub-category select.
 
 6. **Legal page** (new)
    - Static Privacy Policy & Terms of Use content. Public route, reachable
@@ -613,12 +621,12 @@ Not yet run against a live MongoDB (see claude-records.log) — syntax-checked o
 - Recurring transactions / budgets / reports (can layer on top of this schema later).
 
 ## Implemented (previously pending, now done)
-All five requested on 2026-08-30 have been implemented:
+All requested on 2026-08-30 have been implemented:
 1. **Two category pie charts (expenses + deposits), no toggle; tables with a
    Percentage column and a Total row.** Removed the single-toggled pie and its
    labels (unreadable with few transactions); both expense and deposit pies now
-   render side by side, each table showing category, money total, and percentage,
-   ending with a Total row.
+   render, stacked one block above the other (each block = pie + table), each
+   table showing category, money total, and percentage, ending with a Total row.
 2. **Faster chart animations.** `CHART_ANIMATION_MS = 500` in `Dashboard.jsx`,
    applied to the pie, daily-line and type-comparison charts.
 3. **Daily amounts as a LINE chart** (not smooth), each data point with a
@@ -630,6 +638,11 @@ All five requested on 2026-08-30 have been implemented:
 5. **Duplicate a transaction.** Per-row "Duplicate" link opens the transaction
    form pre-filled in create mode so saving creates a new record (recurring
    transactions).
+6. **Categories sortable by drag-and-drop.** Profile page lets the user reorder
+   categories (HTML5 DnD, no library); the array order is persisted via
+   `PATCH /api/auth/categories` and reflected in pickers.
+7. **Subcategories lexicographically sorted.** Subcategories render alphabetically
+   in the Profile page and the transaction form's sub-category select.
 
 Not yet run against a live MongoDB (see claude-records.log) — build/syntax-checked
 only.

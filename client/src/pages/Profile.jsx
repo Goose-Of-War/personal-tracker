@@ -13,6 +13,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [currencyError, setCurrencyError] = useState("");
   const [savingCurrency, setSavingCurrency] = useState(false);
+  const [dragIndex, setDragIndex] = useState(null); // drag-and-drop reorder of categories
 
   const handleCurrencyChange = async (e) => {
     const value = e.target.value;
@@ -71,6 +72,19 @@ export default function Profile() {
     );
   };
 
+  // Drag-and-drop reorder (HTML5 DnD, no library): dragging a category over
+  // another swaps their positions in the array, then persists the new order.
+  const reorderCategories = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex) return;
+    const next = [...categories];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    persist(next);
+    setDragIndex(null);
+  };
+
+  const sortedSubs = (subs) => [...subs].sort((a, b) => a.localeCompare(b));
+
   return (
     <div className="page">
       <NavBar />
@@ -98,17 +112,27 @@ export default function Profile() {
       </div>
 
       <div className="category-manager">
-        {categories.map((c) => (
-          <div key={c.name} className="category-manager__group">
+        {categories.map((c, index) => (
+          <div
+            key={c.name}
+            className={`category-manager__group${dragIndex === index ? " category-manager__group--dragging" : ""}`}
+            draggable
+            onDragStart={() => setDragIndex(index)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (dragIndex !== null && dragIndex !== index) reorderCategories(dragIndex, index);
+            }}
+            onDragEnd={() => setDragIndex(null)}
+          >
             <div className="category-manager__group-header">
-              <strong>{c.name}</strong>
+              <strong>⠿ {c.name}</strong>
               <button type="button" className="button-danger" onClick={() => removeCategory(c.name)} disabled={saving}>
                 Remove
               </button>
             </div>
 
             <ul className="category-manager__subs">
-              {c.subCategories.map((s) => (
+              {sortedSubs(c.subCategories).map((s) => (
                 <li key={s}>
                   {s}
                   <button

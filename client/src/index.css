@@ -343,11 +343,16 @@ label {
   border-radius: 12px;
   padding: 1rem 1.25rem;
 }
+.category-manager__group--dragging {
+  opacity: 0.5;
+  border-style: dashed;
+}
 .category-manager__group-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
+  cursor: grab;
 }
 .category-manager__subs {
   list-style: none;
