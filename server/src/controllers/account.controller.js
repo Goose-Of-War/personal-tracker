@@ -84,12 +84,14 @@ export async function updateAccount(req, res) {
 
   await account.save();
 
-  // Editing balance on an EXISTING account is recorded as a Correction transaction
-  // (§3a) rather than a direct field write, so balanceEngine.js stays the only place
-  // that ever changes a balance and the edit shows up as a normal, editable
-  // transaction. Initial balance at account creation is unaffected (see createAccount).
+  // Editing balance on an EXISTING account: by default this is recorded as a Correction
+  // transaction (§3a) so balanceEngine.js stays the only place that ever changes a balance
+  // and the edit shows up as a normal, editable transaction. When `logCorrection` is
+  // explicitly false, the balance is written directly (the "legacy" way, no transaction).
+  // Initial balance at account creation is unaffected (see createAccount).
   const delta = balance !== undefined ? balance - account.balance : 0;
-  if (delta !== 0) {
+  const logCorrection = req.body.logCorrection; // true/undefined => Correction transaction; false => legacy direct write
+  if (delta !== 0 && logCorrection !== false) {
     const user = await User.findById(req.userId).select("categories");
     if (!user.categories.some((c) => c.name === "Correction")) {
       user.categories.push({ name: "Correction", subCategories: [] });
@@ -115,6 +117,11 @@ export async function updateAccount(req, res) {
       await Transaction.deleteOne({ _id: transaction._id });
       throw err;
     }
+  } else if (delta !== 0 && logCorrection === false) {
+    // Legacy direct-write correction (checkbox unchecked): no transaction is
+    // generated, the balance is just set on the account directly.
+    account.balance = balance;
+    await account.save();
   }
 
   const fresh = await Account.findById(account._id);

@@ -12,6 +12,7 @@ export default function AccountEditOverlay({ account, onClose, onSave, onArchive
     limit: account?.limit != null ? toDisplay(account.limit) : "",
     note: account?.note ?? "",
   });
+  const [logCorrection, setLogCorrection] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -22,13 +23,18 @@ export default function AccountEditOverlay({ account, onClose, onSave, onArchive
     setError("");
     setSubmitting(true);
     try {
-      await onSave({
+      const payload = {
         name: form.name,
         type: form.type,
         balance: toSmallestUnit(form.balance || "0"),
         limit: form.type === "credit" && form.limit !== "" ? toSmallestUnit(form.limit) : null,
         note: form.note,
-      });
+      };
+      // Only send the correction flag for existing accounts. Checked (default true)
+      // means the balance change is logged as a Correction transaction; unchecked
+      // means it's applied directly the legacy way (no transaction).
+      if (!isNew) payload.logCorrection = logCorrection;
+      await onSave(payload);
       onClose();
     } catch (err) {
       setError(err.message);
@@ -67,6 +73,17 @@ export default function AccountEditOverlay({ account, onClose, onSave, onArchive
           Balance
           <input type="number" step="0.01" value={form.balance} onChange={update("balance")} required />
         </label>
+
+        {!isNew && (
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={logCorrection}
+              onChange={(e) => setLogCorrection(e.target.checked)}
+            />
+            Note the correction as a transaction
+          </label>
+        )}
 
         {form.type === "credit" && (
           <label>

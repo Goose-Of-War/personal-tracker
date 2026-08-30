@@ -205,14 +205,19 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
 
 ### Balance corrections (§3a)
 - Editing an **existing** account's `balance` field (via the Accounts page edit
-  overlay / account PATCH endpoint) does not write the field directly. Instead it's
-  translated into an automatically-created transaction — category `Correction`,
-  dated now — that goes through the normal `computeEffects`/`applyEffects` pipeline
-  like any other transaction. This keeps `balanceEngine.js` the single place that
-  ever changes a balance, and means correction transactions show up in the
-  Transactions list and can be edited/deleted exactly like any other transaction
-  (reverse-then-reapply works correctly since it's a first-class transaction, not a
-  special case).
+  overlay / account PATCH endpoint) is gated by a **"Note the correction as a
+  transaction" checkbox** (default checked / true) in the edit overlay:
+  - **Checked (default)**: it's translated into an automatically-created
+    transaction — category `Correction`, dated now — that goes through the normal
+    `computeEffects`/`applyEffects` pipeline like any other transaction. This keeps
+    `balanceEngine.js` the single place that ever changes a balance, and means
+    correction transactions show up in the Transactions list and can be
+    edited/deleted exactly like any other transaction (reverse-then-reapply works
+    correctly).
+  - **Unchecked**: the balance is written **directly** on the account — the
+    "legacy way" from before this feature existed — with **no** transaction
+    generated and no credit-limit cap check. This is the opt-out.
+  (The checkbox is only shown when editing an existing account, not on create.)
 - This does NOT apply to the initial `balance` set when *creating* a new account —
   that's still just the account's starting point, not a correction, and is written
   directly with no transaction generated.
@@ -263,8 +268,9 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
      Investment, Credit, Loan, IOU) — each type displayed as its own labeled section,
      not mixed/unsorted together.
    - Click an account → overlay/modal to edit name, note, balance, limit. Editing
-     `balance` generates an automatic `Correction` transaction instead of writing
-     the field directly — see §3a.
+     `balance` on an existing account is gated by a "Note the correction as a
+     transaction" checkbox (default checked = logged as a Correction transaction;
+     unchecked = direct legacy write) — see §3a.
    - Archive (soft-delete) action instead of hard delete.
 
 4. **Transactions page**
@@ -283,6 +289,10 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
      (`lib/accountTypes.js`) used everywhere else — savings, investment,
      credit, loan, IOU — not creation order.
    - Edit existing transaction — must correctly reverse/reapply balance effects.
+   - **Duplicate a transaction** — each row has a "Duplicate" button that opens
+     the transaction form pre-filled from that transaction in **create mode**,
+     letting you tweak a couple fields (e.g. the date) and save a new record —
+     handy for recurring transactions with similar shapes.
    - Balances update promptly after add/edit/delete (via API response or refetch).
 
 5. **Profile page** (new)
@@ -522,11 +532,16 @@ charts. Separate page/nav entry, not folded into Home.
 2. **Category breakdown** — donut/pie chart of expense-by-category for the
    month (deposits get their own chart or a toggle — expenses is the more
    useful default view), plus a table alongside it for exact figures
-   (charts alone are bad at exact numbers). Click-through to subcategories.
-3. **Daily trend** — bar chart of daily expense totals across the month's
-   days.
+   (charts alone are bad at exact numbers). Pie **labels show the category
+   name + its percentage** of the month's total (e.g. "Food 24.5%");
+   the table shows category + money total. Click-through to subcategories.
+3. **Daily trend** — **line chart** of daily expense totals across the month's
+   days (a line, not bars).
 4. **Type comparison** — simple bar chart: expenses vs. deposits vs.
    transfer volume.
+
+All charts use a fast animation (`CHART_ANIMATION_MS = 500`) instead of
+recharts' slow default, so deposit/expense transitions feel snappier.
 
 ### Implementation
 - **Backend**: `GET /api/dashboard?month=YYYY-MM` (`dashboard.controller.js`
@@ -589,3 +604,23 @@ Not yet run against a live MongoDB (see claude-records.log) — syntax-checked o
 - Password reset / email verification.
 - Multi-user shared accounts.
 - Recurring transactions / budgets / reports (can layer on top of this schema later).
+
+## Implemented (previously pending, now done)
+All five requested on 2026-08-30 have been implemented:
+1. **Pie-chart labels show category name + percentage.** Dashboard pie labels now
+   render `"<category> <pct>%"` (percentage of the month's total); the breakdown
+   table still shows category + money total.
+2. **Faster chart animations.** `CHART_ANIMATION_MS = 500` in `Dashboard.jsx`,
+   applied to the pie, daily-line and type-comparison charts.
+3. **Daily amounts as a LINE chart.** Daily-expenses chart is now a `LineChart`
+   instead of bars.
+4. **Correction checkbox.** Account-edit overlay (existing accounts) shows "Note
+   the correction as a transaction", default checked (true); checked → Correction
+   transaction, unchecked → legacy direct balance write (see §3a update below).
+5. **Duplicate a transaction.** Per-row "Duplicate" link opens the transaction
+   form pre-filled in create mode so saving creates a new record (recurring
+   transactions).
+
+Not yet run against a live MongoDB (see claude-records.log) — build/syntax-checked
+only.
+

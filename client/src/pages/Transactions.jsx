@@ -19,6 +19,7 @@ export default function Transactions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(undefined); // undefined = closed, null = new, object = edit
+  const [duplicating, setDuplicating] = useState(undefined); // undefined = closed, object = template to duplicate as new
 
   const load = async (targetPage = page, targetMonth = month) => {
     setLoading(true);
@@ -90,7 +91,12 @@ export default function Transactions() {
 
       {!loading && !error && (
         <>
-          <TransactionList transactions={transactions} accountsById={accountsById} onSelect={setEditing} />
+          <TransactionList
+            transactions={transactions}
+            accountsById={accountsById}
+            onSelect={setEditing}
+            onDuplicate={setDuplicating}
+          />
 
           {totalPages > 1 && (
             <div className="pagination">
@@ -106,6 +112,18 @@ export default function Transactions() {
             </div>
           )}
         </>
+      )}
+
+      {duplicating !== undefined && (
+        <TransactionForm
+          transaction={duplicating}
+          accounts={accounts}
+          categories={user?.categories ?? []}
+          isDuplicate
+          onClose={() => setDuplicating(undefined)}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
       )}
 
       {editing !== undefined && (

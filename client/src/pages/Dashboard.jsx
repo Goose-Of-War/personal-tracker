@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import NavBar from "../components/NavBar.jsx";
@@ -7,6 +7,7 @@ import { currentMonth, shiftMonth, monthLabel } from "../lib/monthNav.js";
 import { formatMoney } from "../lib/money.js";
 
 const SLICE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#06b6d4", "#a855f7", "#ec4899", "#84cc16"];
+const CHART_ANIMATION_MS = 500;
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export default function Dashboard() {
   }, [month]);
 
   const breakdown = data?.categoryBreakdown?.[breakdownView] ?? [];
+  const breakdownTotal = breakdown.reduce((sum, row) => sum + row.total, 0);
   const dailyTrend = data?.dailyTrend ?? [];
   const summary = data?.summary;
 
@@ -104,7 +106,17 @@ export default function Dashboard() {
               <div className="dashboard-breakdown">
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
-                    <Pie data={breakdown} dataKey="total" nameKey="category" outerRadius={100} label>
+                    <Pie
+                      data={breakdown}
+                      dataKey="total"
+                      nameKey="category"
+                      outerRadius={100}
+                      animationDuration={CHART_ANIMATION_MS}
+                      label={({ category, total }) => {
+                        const pct = breakdownTotal > 0 ? ((total / breakdownTotal) * 100).toFixed(1) : "0";
+                        return `${category} ${pct}%`;
+                      }}
+                    >
                       {breakdown.map((_, i) => (
                         <Cell key={i} fill={SLICE_COLORS[i % SLICE_COLORS.length]} />
                       ))}
@@ -138,12 +150,12 @@ export default function Dashboard() {
               <p className="page-hint">No expenses recorded this month.</p>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={dailyTrend}>
+                <LineChart data={dailyTrend}>
                   <XAxis dataKey="day" />
                   <YAxis tickFormatter={(v) => formatMoney(v, currency)} width={80} />
                   <Tooltip formatter={(value) => formatMoney(value, currency)} labelFormatter={(d) => `Day ${d}`} />
-                  <Bar dataKey="total" fill="#6366f1" />
-                </BarChart>
+                  <Line type="monotone" dataKey="total" name="Total" stroke="#6366f1" strokeWidth={2} dot={false} animationDuration={CHART_ANIMATION_MS} />
+                </LineChart>
               </ResponsiveContainer>
             )}
           </section>
@@ -156,7 +168,7 @@ export default function Dashboard() {
                 <YAxis tickFormatter={(v) => formatMoney(v, currency)} width={80} />
                 <Tooltip formatter={(value) => formatMoney(value, currency)} />
                 <Legend />
-                <Bar dataKey="value" name="Total" fill="#22c55e" />
+                <Bar dataKey="value" name="Total" fill="#22c55e" animationDuration={CHART_ANIMATION_MS} />
               </BarChart>
             </ResponsiveContainer>
           </section>

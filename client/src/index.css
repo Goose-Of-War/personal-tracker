@@ -312,6 +312,7 @@ label {
   gap: 0.15rem;
 }
 .transaction-row__amount { font-weight: 700; }
+.transaction-row__duplicate { font-size: 0.75rem; text-decoration: none; }
 .transaction-row--expense .transaction-row__amount { color: var(--credit); }
 .transaction-row--deposit .transaction-row__amount { color: var(--savings); }
 .transaction-row__date { font-size: 0.8rem; color: var(--muted); }

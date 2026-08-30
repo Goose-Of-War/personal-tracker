@@ -21,7 +21,7 @@ function groupByDate(transactions) {
   return groups;
 }
 
-export default function TransactionList({ transactions, accountsById, onSelect }) {
+export default function TransactionList({ transactions, accountsById, onSelect, onDuplicate }) {
   const { user } = useAuth();
   const currency = user?.currency || "INR";
   if (transactions.length === 0) {
@@ -50,6 +50,18 @@ export default function TransactionList({ transactions, accountsById, onSelect }
                 </div>
                 <div className="transaction-row__side">
                   <span className="transaction-row__amount">{formatMoney(t.primaryAmount, currency)}</span>
+                  {onDuplicate && (
+                    <button
+                      type="button"
+                      className="link-button transaction-row__duplicate"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDuplicate(t);
+                      }}
+                    >
+                      Duplicate
+                    </button>
+                  )}
                 </div>
               </li>
             ))}

@@ -17,8 +17,10 @@ function toDateInputValue(date) {
 
 // transaction = null means "create new". categories = the user's configured
 // categories list (§1a): [{ name, subCategories: [] }].
-export default function TransactionForm({ transaction, accounts, categories = [], onClose, onSave, onDelete }) {
-  const isNew = !transaction;
+// isDuplicate: pre-fill the form from `transaction` but treat it as a NEW record
+// (saving POSTs a fresh transaction) — for recurring entries.
+export default function TransactionForm({ transaction, accounts, categories = [], isDuplicate = false, onClose, onSave, onDelete }) {
+  const isNew = !transaction || isDuplicate;
   const sortedAccounts = [...accounts].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
   const [form, setForm] = useState({
     type: transaction?.type ?? "expense",
@@ -86,7 +88,7 @@ export default function TransactionForm({ transaction, accounts, categories = []
   return (
     <div className="overlay-backdrop" onClick={onClose}>
       <form className="overlay-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
-        <h2>{isNew ? "New transaction" : "Edit transaction"}</h2>
+        <h2>{isNew ? (isDuplicate ? "Duplicate transaction" : "New transaction") : "Edit transaction"}</h2>
 
         <label>
           Type
