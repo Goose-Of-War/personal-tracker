@@ -530,12 +530,13 @@ charts. Separate page/nav entry, not folded into Home.
    transfer volume, net change, for the selected month. Same visual
    pattern as Home's summary cards, different numbers/timeframe.
 2. **Category breakdown** — donut/pie charts of expense-by-category **and**
-   deposit-by-category for the month, shown **side by side (both at once — no
-   toggle)**, each with a table alongside it for exact figures. The pie charts
-   have **no labels** (they became unreadable/crowded with very few
-   transactions); instead each table has a **Percentage column** (share of that
-   chart's total) and a **Total row** at the end (the sum). Click-through to
-   subcategories.
+   deposit-by-category for the month, shown **both at once (no toggle)**, one
+   block above the other (each block = a pie chart with its table alongside it,
+   full width — stacked vertically, not side-by-side, so it fits the page
+   width well on desktop as well as responsive/mobile). The pie charts have
+   **no labels** (they became unreadable/crowded with very few transactions);
+   instead each table has a **Percentage column** (share of that chart's total)
+   and a **Total row** at the end (the sum). Click-through to subcategories.
 3. **Daily trend** — **line chart** of daily expense totals across the month's
    days (a line, not bars). The line is **not smoothed** (straight segments,
    no monotone curve), each data point gets a **square marker**, and a
@@ -564,9 +565,9 @@ recharts' slow default, so deposit/expense transitions feel snappier.
   (`currentMonth`/`shiftMonth`/`monthLabel` — pulled out of `Transactions.jsx`,
   which now imports from there too instead of keeping its own copy).
 - Summary strip (expenses/deposits/transfers/net) + two category pie charts —
-   one for expenses and one for deposits, shown side by side with **no toggle** —
-   each with a table beside it (category, money total, percentage of that
-   chart's total, plus a Total row; no pie labels) + daily-expense line chart
+   one for expenses and one for deposits, shown both at once (**no toggle**),
+   stacked one block above the other (each block = pie + table: category, money
+   total, percentage, Total row; no pie labels) + daily-expense line chart
    (not smoothed, square point markers, average line) + an
    expenses-vs-deposits-vs-transfers bar chart. All money values go through
    the existing `formatMoney()` (currency-aware).

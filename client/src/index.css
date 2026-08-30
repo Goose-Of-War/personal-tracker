@@ -186,8 +186,8 @@ label {
 }
 .dashboard-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 2rem;
   align-items: start;
 }
 .dashboard-table { width: 100%; border-collapse: collapse; }
