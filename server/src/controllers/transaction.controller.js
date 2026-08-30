@@ -1,6 +1,6 @@
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
-import { computeEffects, reverseEffects, applyEffects, loadOwnedAccountsMap } from "../lib/balanceEngine.js";
+import { computeEffects, reverseEffects, applyEffects, loadOwnedAccountsMap, assertWithinCreditLimits } from "../lib/balanceEngine.js";
 
 const TYPES = ["deposit", "expense", "transfer"];
 
@@ -112,6 +112,7 @@ export async function createTransaction(req, res) {
   const transaction = await Transaction.create({ userId: req.userId, ...candidate });
   try {
     const effects = computeEffects(transaction, accountsMap);
+    assertWithinCreditLimits(effects, accountsMap);
     await applyEffects(effects);
   } catch (err) {
     // Roll back the transaction record itself if applying its balance effects failed,
@@ -180,6 +181,7 @@ export async function updateTransaction(req, res) {
 
   // Reverse the old effect and apply the new one as a single sequence, so a failure
   // partway through rolls everything in this call back to the pre-update state.
+  assertWithinCreditLimits([...reversal, ...newEffects], accountsMap);
   await applyEffects([...reversal, ...newEffects]);
 
   Object.assign(existing, merged);

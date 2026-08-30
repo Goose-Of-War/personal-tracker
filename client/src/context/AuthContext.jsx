@@ -42,8 +42,13 @@ export function AuthProvider({ children }) {
     setUser((u) => (u ? { ...u, categories: res.categories } : u));
   };
 
+  const updateCurrency = async (currency) => {
+    const res = await api.patch("/auth/currency", { currency });
+    setUser((u) => (u ? { ...u, currency: res.currency } : u));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, updateCategories }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, logout, updateCategories, updateCurrency }}>
       {children}
     </AuthContext.Provider>
   );

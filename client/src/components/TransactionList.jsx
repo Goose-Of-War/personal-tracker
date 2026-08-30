@@ -1,4 +1,5 @@
-import { toDisplay, accountDisplayName } from "../lib/money.js";
+import { accountDisplayName, formatMoney } from "../lib/money.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 function accountName(accountsById, id) {
   const account = accountsById.get(id);
@@ -21,6 +22,8 @@ function groupByDate(transactions) {
 }
 
 export default function TransactionList({ transactions, accountsById, onSelect }) {
+  const { user } = useAuth();
+  const currency = user?.currency || "INR";
   if (transactions.length === 0) {
     return <p>No transactions yet. Add one to get started.</p>;
   }
@@ -46,7 +49,7 @@ export default function TransactionList({ transactions, accountsById, onSelect }
                   {t.note && <span className="transaction-row__note">{t.note}</span>}
                 </div>
                 <div className="transaction-row__side">
-                  <span className="transaction-row__amount">{toDisplay(t.primaryAmount)}</span>
+                  <span className="transaction-row__amount">{formatMoney(t.primaryAmount, currency)}</span>
                 </div>
               </li>
             ))}

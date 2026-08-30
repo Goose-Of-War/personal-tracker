@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     username: { type: String, required: true, unique: true, trim: true, lowercase: true },
     passwordHash: { type: String, required: true },
+    currency: { type: String, default: "INR", trim: true, uppercase: true },
     categories: {
       type: [
         {

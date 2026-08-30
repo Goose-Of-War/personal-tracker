@@ -6,6 +6,26 @@ it if a decision changes. Keep this current every session, not just on big decis
 new pages, changed UX behavior (e.g. a redirect rule), and anything else a future
 session would otherwise have to re-derive from the code.
 
+## Instructions for the AI agent — READ FIRST, DO NOT IGNORE
+
+**THE RULE: Default is document and wait. You do NOT touch code unless the user
+has EXPLICITLY given the green light to edit code, in that specific message.**
+
+- A bug report, a feature description, a "this is slow," a "this looks wrong" —
+  none of these are permission to write code. They are things to document
+  (in this readme and/or the log) and then STOP.
+- Silence on whether to implement is NOT permission. Do not infer permission
+  from tone, from urgency, from how obviously-correct the fix seems, or from
+  what was approved earlier in the conversation. Every round needs its own
+  explicit go-ahead.
+- Only unambiguous words like "implement," "do it," "fix it," "go ahead," "pls
+  proceed with code" — said in that message — authorize touching code. A
+  plain description of desired behavior with no such word is a documentation
+  task, not an implementation request.
+- This has already been violated more than once in this project's history by
+  assuming a description was a request. That is exactly the failure this
+  section exists to prevent. Do not repeat it.
+
 ## Tech Stack
 - Node.js v20+
 - Vite + React (frontend)
@@ -258,6 +278,10 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
      same as accounts).
    - Category/subCategory selects are populated from the user's `categories` list
      (§1a), not free text.
+   - Account dropdowns (primary and secondary/split) are sorted by account
+     type, following the same canonical order as `ACCOUNT_TYPES`
+     (`lib/accountTypes.js`) used everywhere else — savings, investment,
+     credit, loan, IOU — not creation order.
    - Edit existing transaction — must correctly reverse/reapply balance effects.
    - Balances update promptly after add/edit/delete (via API response or refetch).
 
@@ -443,23 +467,97 @@ Added after "site slow on load, especially data fetch" was reported.
   Mongoose document hydration on data that's only ever `res.json()`'d, never
   mutated after fetching. Minor, safe, no behavior change.
 
-### Suspected bigger factor — not fixed here, needs your input
-The above reduces redundant requests and per-request overhead, but the
-likely dominant cause of "slow, especially data fetch" is infrastructure,
-not app code: Vercel serverless cold starts plus MongoDB Atlas round-trip
-latency, which gets worse if the Atlas cluster's region is far from
-wherever Vercel is running the function. Worth checking:
-- Which AWS/GCP region the Atlas cluster is in vs. Vercel's function region
-  (Vercel project settings → Functions → Region) — mismatched regions can
-  add real latency on every cold request.
-- Atlas M0 (free tier) is also just slower than paid tiers; if this remains
-  slow after region-matching, that's the next thing to look at.
-Not changed here since it's an infra/account setting, not something to
-guess at from code.
+## 9. Mobile Responsiveness — IMPLEMENTED
 
-## Open decisions / flagged for later (not blocking v1)
-- Whether credit balance should hard-cap at `limit` or just warn.
-- Any multi-currency support (currently assumes single currency, 1:1 transfers).
+Reported: navbar can't fit on phone, and loading/some text is always
+left-aligned. Root causes diagnosed in session 19, fixed in session 20 —
+CSS-only, no component/JSX changes needed.
+
+1. **Navbar wrap.** New `@media (max-width: 640px)` rule in `index.css`:
+   `.navbar` gets `flex-wrap: wrap`; `.navbar__user` (name + logout) is
+   pinned to its own full-width row above `.navbar__links` (5 nav links),
+   which wraps onto its own row(s) below. No hamburger/collapse menu — just
+   wrapping, which is the minimal fix for "can't fit," not a full nav
+   redesign.
+2. **Loading/empty-state text padding.** `.page > p { padding: 0 1.5rem; }`
+   catches every bare, class-less `<p>Loading…</p>` /
+   `<p>No transactions yet...</p>` across `Home.jsx`, `Accounts.jsx`,
+   `Transactions.jsx`, `TransactionList.jsx` (a React fragment doesn't add a
+   DOM node, so `TransactionList`'s returned `<p>` is still a direct DOM
+   child of `.page`) — brings them in line with sibling content that
+   already had `padding: 0 1.5rem` individually. Also gave the previously
+   orphaned `.page-loading` class (used in `ProtectedRoute.jsx`, had zero
+   matching CSS before this) actual padding.
+
+NOT touched: no other grids/breakpoints were added beyond these two specific
+complaints (e.g. `.account-grid`/`.summary-grid` column minimums weren't
+revisited) — scoped to exactly what was diagnosed, not a general responsive
+redesign.
+
+## 10. Dashboard (PLANNED, not yet implemented)
+
+Monthly transactions dashboard — a different lens from Home (which shows
+current balances by account type). This shows "what happened with money
+this month": categorical breakdown, daily trend, type comparison, via
+charts. Separate page/nav entry, not folded into Home.
+
+### Scope (finalized, resolved in chat)
+- **Transfers excluded from the category chart.** Only expenses and
+  deposits are categorized and charted; transfers show up only as a
+  separate total figure (moving money between your own accounts isn't
+  "spending" or "income").
+- **Split expenses**: only the primary portion counts toward category
+  totals. The split/secondary portion is not separately attributed to a
+  category.
+- **Timeframe**: month only for now, same pattern as the Transactions page
+  (defaults to current month, prev/next controls). No custom date-range
+  option yet.
+- **Chart library**: `recharts` — new client dependency, none installed
+  currently.
+
+### Sections (top to bottom)
+1. **Monthly summary strip** — total expenses, total deposits, total
+   transfer volume, net change, for the selected month. Same visual
+   pattern as Home's summary cards, different numbers/timeframe.
+2. **Category breakdown** — donut/pie chart of expense-by-category for the
+   month (deposits get their own chart or a toggle — expenses is the more
+   useful default view), plus a table alongside it for exact figures
+   (charts alone are bad at exact numbers). Click-through to subcategories.
+3. **Daily trend** — bar chart of daily expense totals across the month's
+   days.
+4. **Type comparison** — simple bar chart: expenses vs. deposits vs.
+   transfer volume.
+
+### Technical shape (planned)
+- New backend aggregation endpoint(s) — MongoDB `$group` by category, by
+  day, by type — so the server does the math, not the browser pulling
+  every transaction and summing in JS. Consistent with the performance
+  work already done (§8).
+- New client dependency: `recharts`.
+- Month-navigation logic currently living inside `Transactions.jsx` gets
+  extracted into something shared, since Dashboard needs the identical
+  prev/next-month control rather than a duplicated copy.
+
+NOT decided yet / not needed for this plan: exact route names, exact
+endpoint shapes/response schemas, exact component boundaries — left for
+implementation time, not blocking the concept.
+- **Currency**: one fixed currency per user, default **INR**, stored on the
+  `User` model (`currency`, 3-letter code), editable via `PATCH
+  /api/auth/currency` and a dropdown on the Profile page (INR/USD/EUR/GBP —
+  any 3-letter code is accepted server-side, the dropdown just covers the
+  common ones). Not per-transaction/per-account. Display-only formatting
+  (`formatMoney()` in `client/src/lib/money.js`) prefixes the currency
+  symbol; the plain `toDisplay()` used to seed editable amount inputs is
+  untouched, since those need a bare number, not a symbol-prefixed one.
+- **Credit limit**: `balanceEngine.js` now exports `assertWithinCreditLimits`
+  — sums the net delta per account and rejects (400, before anything is
+  written) if a credit/loan account's projected balance would exceed its
+  `limit`. Wired into `createTransaction`, `updateTransaction`, and the
+  account-balance-correction path in `updateAccount`. This is a hard-cap:
+  the transaction/correction is rejected outright, not just flagged.
+  Account *creation* with an initial balance already over a limit is
+  unaffected — only transactions and corrections are capped, per how this
+  was asked for.
 
 ## Implemented (previously pending, now done)
 All three items confirmed in chat have been implemented:

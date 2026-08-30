@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { toDisplay, toSmallestUnit, accountDisplayName } from "../lib/money.js";
+import { ACCOUNT_TYPES } from "../lib/accountTypes.js";
+
+const TYPE_ORDER = ACCOUNT_TYPES.map((t) => t.value);
 
 const TYPES = [
   { value: "expense", label: "Expense" },
@@ -16,12 +19,13 @@ function toDateInputValue(date) {
 // categories list (§1a): [{ name, subCategories: [] }].
 export default function TransactionForm({ transaction, accounts, categories = [], onClose, onSave, onDelete }) {
   const isNew = !transaction;
+  const sortedAccounts = [...accounts].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
   const [form, setForm] = useState({
     type: transaction?.type ?? "expense",
     date: toDateInputValue(transaction?.date),
     category: transaction?.category ?? "",
     subCategory: transaction?.subCategory ?? "",
-    primaryAccount: transaction?.primaryAccount ?? accounts[0]?._id ?? "",
+    primaryAccount: transaction?.primaryAccount ?? sortedAccounts[0]?._id ?? "",
     primaryAmount: transaction ? toDisplay(transaction.primaryAmount) : "",
     split: transaction?.type === "expense" && !!transaction?.secondaryAccount,
     secondaryAccount: transaction?.secondaryAccount ?? "",
@@ -129,7 +133,7 @@ export default function TransactionForm({ transaction, accounts, categories = []
         <label>
           {form.type === "transfer" ? "From account" : "Account"}
           <select value={form.primaryAccount} onChange={update("primaryAccount")} required>
-            {accounts.map((a) => (
+            {sortedAccounts.map((a) => (
               <option key={a._id} value={a._id}>
                 {accountDisplayName(a)}
               </option>
@@ -161,7 +165,7 @@ export default function TransactionForm({ transaction, accounts, categories = []
                 <option value="" disabled>
                   Select an account
                 </option>
-                {accounts
+                {sortedAccounts
                   .filter((a) => a._id !== form.primaryAccount)
                   .map((a) => (
                     <option key={a._id} value={a._id}>

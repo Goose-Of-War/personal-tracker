@@ -109,6 +109,25 @@ label {
 .navbar__links a.active { color: var(--accent); }
 .navbar__user { display: flex; align-items: center; gap: 0.75rem; color: var(--muted); }
 
+@media (max-width: 640px) {
+  .navbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+  .navbar__links {
+    order: 2;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+  }
+  .navbar__user {
+    order: 1;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 .page { max-width: 800px; margin: 0 auto 3rem; }
 .page-header {
   display: flex;
@@ -117,6 +136,12 @@ label {
   padding: 1.5rem;
 }
 .page h1 { padding: 0 1.5rem; }
+
+/* Loading/empty-state text was rendered as bare <p> with no class, so it sat
+   flush against the left edge while every sibling element (headings, hints,
+   grids) carries its own `padding: 0 1.5rem`. This brings it in line. */
+.page > p { padding: 0 1.5rem; }
+.page-loading { padding: 1.5rem; color: var(--muted); }
 
 /* Home */
 .summary-grid {

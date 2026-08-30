@@ -84,6 +84,33 @@ export function reverseEffects(effects) {
   return effects.map((e) => ({ accountId: e.accountId, delta: -e.delta }));
 }
 
+// Hard-cap check (§8 decision: warn AND prevent, not just warn). Sums deltas
+// per account first (an update can carry a reversal + a new effect for the
+// same account) so this checks the actual net result, not an intermediate
+// step. Only credit/loan accounts have a meaningful `limit` (§2). Call this
+// after computeEffects and before applyEffects, so a breach is a clean no-op
+// - nothing has been written yet.
+export function assertWithinCreditLimits(effects, accountsMap) {
+  const netDeltaByAccount = new Map();
+  for (const { accountId, delta } of effects) {
+    const key = String(accountId);
+    netDeltaByAccount.set(key, (netDeltaByAccount.get(key) || 0) + delta);
+  }
+  for (const [key, netDelta] of netDeltaByAccount) {
+    const account = accountsMap.get(key);
+    if (!account) continue;
+    if ((account.type === "credit" || account.type === "loan") && account.limit != null) {
+      const projected = account.balance + netDelta;
+      if (projected > account.limit) {
+        throw Object.assign(
+          new Error(`This would put "${account.name}" over its credit limit.`),
+          { status: 400 }
+        );
+      }
+    }
+  }
+}
+
 // Applies a list of { accountId, delta } via atomic $inc. If any update fails partway
 // through, compensating writes roll back everything already applied in this call.
 // This gives us safety without requiring a MongoDB replica set (needed for real

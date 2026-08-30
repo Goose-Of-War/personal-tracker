@@ -1,7 +1,7 @@
 import Account from "../models/Account.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
-import { correctionEffect, computeEffects, applyEffects } from "../lib/balanceEngine.js";
+import { correctionEffect, computeEffects, applyEffects, assertWithinCreditLimits } from "../lib/balanceEngine.js";
 
 const TYPES = ["credit", "savings", "investment", "iou", "loan"];
 // `limit` is only meaningful for these two account types (§2 of the spec).
@@ -106,8 +106,15 @@ export async function updateAccount(req, res) {
       primaryAccount: account._id,
       primaryAmount: amount,
     });
-    const effects = computeEffects(transaction, new Map([[String(account._id), account]]));
-    await applyEffects(effects);
+    try {
+      const accountsMap = new Map([[String(account._id), account]]);
+      const effects = computeEffects(transaction, accountsMap);
+      assertWithinCreditLimits(effects, accountsMap);
+      await applyEffects(effects);
+    } catch (err) {
+      await Transaction.deleteOne({ _id: transaction._id });
+      throw err;
+    }
   }
 
   const fresh = await Account.findById(account._id);

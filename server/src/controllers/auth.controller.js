@@ -48,7 +48,13 @@ export async function signup(req, res) {
 
   const token = await createSession(user._id);
   res.cookie(SESSION_COOKIE_NAME, token, cookieOptions());
-  res.status(201).json({ id: user._id, name: user.name, username: user.username, categories: user.categories });
+  res.status(201).json({
+    id: user._id,
+    name: user.name,
+    username: user.username,
+    categories: user.categories,
+    currency: user.currency,
+  });
 }
 
 export async function login(req, res) {
@@ -69,7 +75,13 @@ export async function login(req, res) {
 
   const token = await createSession(user._id);
   res.cookie(SESSION_COOKIE_NAME, token, cookieOptions());
-  res.json({ id: user._id, name: user.name, username: user.username, categories: user.categories });
+  res.json({
+    id: user._id,
+    name: user.name,
+    username: user.username,
+    categories: user.categories,
+    currency: user.currency,
+  });
 }
 
 export async function logout(req, res) {
@@ -80,9 +92,26 @@ export async function logout(req, res) {
 }
 
 export async function me(req, res) {
-  const user = await User.findById(req.userId).select("name username categories");
+  const user = await User.findById(req.userId).select("name username categories currency");
   if (!user) return res.status(404).json({ error: "User not found" });
-  res.json({ id: user._id, name: user.name, username: user.username, categories: user.categories });
+  res.json({ id: user._id, name: user.name, username: user.username, categories: user.categories, currency: user.currency });
+}
+
+// Fixed currency per user (§8 decision: single currency, editable in Profile,
+// not per-transaction/per-account). Loose ISO 4217-shaped validation - exactly
+// 3 letters - rather than a hardcoded whitelist, so this doesn't need a code
+// change every time a new currency is wanted.
+export async function updateCurrency(req, res) {
+  const { currency } = req.body;
+  if (typeof currency !== "string" || !/^[A-Za-z]{3}$/.test(currency.trim())) {
+    return res.status(400).json({ error: "currency must be a 3-letter code (e.g. INR, USD)" });
+  }
+  const user = await User.findByIdAndUpdate(
+    req.userId,
+    { currency: currency.trim().toUpperCase() },
+    { new: true }
+  ).select("currency");
+  res.json({ currency: user.currency });
 }
 
 // Replaces the user's whole categories list (Profile page). Per the confirmed

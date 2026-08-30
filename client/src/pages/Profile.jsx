@@ -2,13 +2,30 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import NavBar from "../components/NavBar.jsx";
 
+const COMMON_CURRENCIES = ["INR", "USD", "EUR", "GBP"];
+
 export default function Profile() {
-  const { user, updateCategories } = useAuth();
+  const { user, updateCategories, updateCurrency } = useAuth();
   const categories = user?.categories ?? [];
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newSubCategory, setNewSubCategory] = useState({}); // { [categoryName]: draft text }
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [currencyError, setCurrencyError] = useState("");
+  const [savingCurrency, setSavingCurrency] = useState(false);
+
+  const handleCurrencyChange = async (e) => {
+    const value = e.target.value;
+    setCurrencyError("");
+    setSavingCurrency(true);
+    try {
+      await updateCurrency(value);
+    } catch (err) {
+      setCurrencyError(err.message);
+    } finally {
+      setSavingCurrency(false);
+    }
+  };
 
   const persist = async (next) => {
     setError("");
@@ -64,6 +81,21 @@ export default function Profile() {
       </p>
 
       {error && <p className="form-error">{error}</p>}
+
+      <div className="category-manager__group" style={{ marginBottom: "1.5rem" }}>
+        <div className="category-manager__group-header">
+          <strong>Currency</strong>
+        </div>
+        <p className="page-hint">One fixed currency for all amounts across the app.</p>
+        <select value={user?.currency || "INR"} onChange={handleCurrencyChange} disabled={savingCurrency}>
+          {COMMON_CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        {currencyError && <p className="form-error">{currencyError}</p>}
+      </div>
 
       <div className="category-manager">
         {categories.map((c) => (
