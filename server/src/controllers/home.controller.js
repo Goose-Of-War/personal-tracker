@@ -87,7 +87,7 @@ export async function getHomeStats(req, res) {
       activeDays: curDays,
       breakdown: topCategoriesWithOther(curBreakdown, 3),
     },
-    previousMonth: {
+    previousMonthStats: {
       total: prevTotal,
       dailyAvg: prevDailyAvg,
       activeDays: prevDays,
