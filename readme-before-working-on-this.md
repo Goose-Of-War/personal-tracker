@@ -251,33 +251,39 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
    - Links to the Legal page (Privacy Policy & Terms of Use), framed as
      "using this app means you agree to it."
 
-2. **Home page**
-   - Summary section shows separate category totals rather than one combined net
-     worth figure (a large loan balance made a single net figure swing painfully
-     negative): **Amount in savings**, **Amount in investments**, **Credit due**,
-     **Loan due**, and **Owed to you** (sum of IOU balances — can itself be negative
-     if you owe more than you're owed across IOU accounts, following the existing
-     per-account IOU sign convention). Each is a simple sum of that type's account
-     balances, no cross-type netting.
-   - Below the summary, full account list grouped by type (Savings, Investment,
-     Credit, Loan, IOU) — each type its own section, not one flat mixed list (per
-     the existing account-grouping requirement below).
-   - **Landing revamp (implemented 2026-09-01):** the Home page leads with
-     **this month's expense statistics**:
-     - A **bar chart of categories** for the current month — the **top 3 by
-       spend shown clearly**, all remaining categories lumped into **"Other"**
-       (data from `GET /api/home/expense-stats`, which aggregates the current
-       month's expense transactions by category, keeps the top 3, buckets the
-       rest into "Other", and is computed server-side).
-     - An **average per-day increase/decrease in expense** compared to the
-       **previous month** (avg daily expense this month vs. avg daily expense
-       last month; each month's **daily avg = that month's total expense ÷ the
-       number of distinct days in the month that had at least one transaction**
-       — expense, income, or transfer — not the calendar-day count).
-       Displayed as a "% up/down vs {previous month}" line under the chart
-       (green when down, red when up; shows "no comparison" if last month had
-       no expenses).
-     The existing summary cards + account list stay below these stats.
+2. **Home page** (landing)
+   - **Landing redesign (implemented 2026-09-01).** The Home page is a single
+     expense-focused block and displays **no transaction or balance amounts***:
+     the summary cards (Amount in savings / investments / credit / loan /
+     owed-to-you) and the grouped account list are **removed from the landing
+     page** entirely. Content:
+     - A **horizontal stacked bar** of this month's expense categories — the
+       **top 3 by spend** plus everything else lumped into **"Other"**, each
+       chunk a **distinct colour** (e.g. `[====|==|=|==]`). No per-chunk amounts,
+       no hover tooltips with figures; a small legend (names + colour dots, no
+       amounts) sits under the bar.
+     - The **total expense amount** for the month, with the **average expense per
+       active day in brackets** (daily avg = month total ÷ number of distinct
+       days with at least one transaction, expense/income/transfer alike).
+     - Beside it, the **% increase/decrease vs the previous month** as small
+       text, with a **red upward ▲** when up and a **green downward ▼** when
+       down; **the % number itself renders in black** (only the triangle is
+       coloured).
+     Data still from `GET /api/home/expense-stats` (server-side top-3 + "Other"
+     bucketing, active-day averages, `dailyAvgDelta`). Header month label comes
+     from the server's `month` field (UTC, same month used to bucket).
+     (*Supersedes the previously-implemented bar-chart + summary design.)
+   - **Previous Home behaviour kept only as an Account reference (no longer
+     displayed on Home):** summary section showed separate category totals rather
+     than one combined net worth figure (a large loan balance made a single net
+     figure swing painfully negative): **Amount in savings**, **Amount in
+     investments**, **Credit due**, **Loan due**, and **Owed to you** (sum of IOU
+     balances — can itself be negative if you owe more than you're owed across IOU
+     accounts, following the existing per-account IOU sign convention). Each was a
+     simple sum of that type's account balances, no cross-type netting. Below it, a
+     full account list grouped by type (Savings, Investment, Credit, Loan, IOU) —
+     each type its own section, not one flat mixed list (per the existing
+     account-grouping requirement below).
 
 3. **Accounts page**
    - List all accounts (including edit affordance per row), grouped by type (Savings,
@@ -659,10 +665,12 @@ All requested on 2026-08-30 have been implemented:
    `PATCH /api/auth/categories` and reflected in pickers.
 7. **Subcategories lexicographically sorted.** Subcategories render alphabetically
    in the Profile page and the transaction form's sub-category select.
-8. **Home landing revamp.** Home leads with this month's expense bar chart
-   (top 3 categories + "Other") and the avg-per-day spend delta vs the previous
-   month (`GET /api/home/expense-stats`); the summary cards + account list remain
-   below.
+8. **Home landing revamp, then redesign.** The Home page first got a monthly
+   expense bar chart; that was then **superseded** by the current design: an
+   expense-only landing (no account/balance amounts) — horizontal stacked bar
+   (top 3 categories + "Other", distinct colours, no per-chunk amounts), total +
+   (avg/day) with a black % delta and a red ▲ / green ▼ triangle, backed by
+   `GET /api/home/expense-stats`.
 
 Not yet run against a live MongoDB (see claude-records.log) — build/syntax-checked
 only.

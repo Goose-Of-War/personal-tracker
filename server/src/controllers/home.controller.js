@@ -27,7 +27,7 @@ async function daysWithTransactions(userId, start, end) {
     { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } } } },
     { $count: "days" },
   ]);
-  return rows.length > 0 ? rows[0].days : 0;
+  return rows.length > 0 ? Number(rows[0].days) : 0;
 }
 
 // Sum expenses by category for one month range, ordered by total desc.
@@ -83,6 +83,12 @@ export async function getHomeStats(req, res) {
     previousMonth: `${previous.start.getUTCFullYear()}-${String(previous.start.getUTCMonth() + 1).padStart(2, "0")}`,
     currentMonth: {
       total: curTotal,
+      // NOTE: dailyAvg is a FLOAT in the same smallest-currency-unit as
+      // primaryAmount (e.g. 166.67 paise). It is a statistical average, NOT a
+      // stored amount — feeding it to the client's formatMoney() (which divides
+      // by 100 and rounds) still renders correctly, but treat it as dimensional,
+      // not as an integer-currency value. Same for previousDailyAvg and the
+      // percentage dailyAvgDelta.
       dailyAvg: curDailyAvg,
       activeDays: curDays,
       breakdown: topCategoriesWithOther(curBreakdown, 3),

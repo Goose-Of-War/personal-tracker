@@ -174,11 +174,53 @@ label {
 .page-section h2 { font-size: 1.1rem; }
 .toggle-group { display: flex; gap: 0.5rem; }
 
-/* Home monthly expense stats */
-.home-delta { margin-top: 1rem; font-size: 1rem; }
-.home-delta strong { font-weight: 700; }
-.home-delta--up { color: var(--danger); }
-.home-delta--down { color: var(--accent); }
+/* Home landing expense block */
+.expense-bar {
+  display: flex;
+  height: 2.25rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.expense-bar__chunk {
+  height: 100%;
+  min-width: 2px;
+}
+.expense-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.expense-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.expense-legend__dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+.expense-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.expense-row__total { font-size: 1.4rem; font-weight: 700; }
+.expense-row__avg { color: var(--muted); font-size: 0.95rem; font-weight: 400; }
+.home-delta { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
+.home-delta__triangle { font-size: 0.7rem; }
+.home-delta__triangle--up { color: var(--danger); }
+.home-delta__triangle--down { color: var(--accent); }
+.home-delta__pct { color: var(--text); font-weight: 600; }
+.home-delta--none { color: var(--muted); font-size: 0.85rem; }
 .dashboard-breakdown {
   display: grid;
   grid-template-columns: 1fr 1fr;
