@@ -262,6 +262,22 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
    - Below the summary, full account list grouped by type (Savings, Investment,
      Credit, Loan, IOU) — each type its own section, not one flat mixed list (per
      the existing account-grouping requirement below).
+   - **Landing revamp (implemented 2026-09-01):** the Home page leads with
+     **this month's expense statistics**:
+     - A **bar chart of categories** for the current month — the **top 3 by
+       spend shown clearly**, all remaining categories lumped into **"Other"**
+       (data from `GET /api/home/expense-stats`, which aggregates the current
+       month's expense transactions by category, keeps the top 3, buckets the
+       rest into "Other", and is computed server-side).
+     - An **average per-day increase/decrease in expense** compared to the
+       **previous month** (avg daily expense this month vs. avg daily expense
+       last month; each month's **daily avg = that month's total expense ÷ the
+       number of distinct days in the month that had at least one transaction**
+       — expense, income, or transfer — not the calendar-day count).
+       Displayed as a "% up/down vs {previous month}" line under the chart
+       (green when down, red when up; shows "no comparison" if last month had
+       no expenses).
+     The existing summary cards + account list stay below these stats.
 
 3. **Accounts page**
    - List all accounts (including edit affordance per row), grouped by type (Savings,
@@ -643,6 +659,10 @@ All requested on 2026-08-30 have been implemented:
    `PATCH /api/auth/categories` and reflected in pickers.
 7. **Subcategories lexicographically sorted.** Subcategories render alphabetically
    in the Profile page and the transaction form's sub-category select.
+8. **Home landing revamp.** Home leads with this month's expense bar chart
+   (top 3 categories + "Other") and the avg-per-day spend delta vs the previous
+   month (`GET /api/home/expense-stats`); the summary cards + account list remain
+   below.
 
 Not yet run against a live MongoDB (see claude-records.log) — build/syntax-checked
 only.

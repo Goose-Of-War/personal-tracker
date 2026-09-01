@@ -173,6 +173,12 @@ label {
 }
 .page-section h2 { font-size: 1.1rem; }
 .toggle-group { display: flex; gap: 0.5rem; }
+
+/* Home monthly expense stats */
+.home-delta { margin-top: 1rem; font-size: 1rem; }
+.home-delta strong { font-weight: 700; }
+.home-delta--up { color: var(--danger); }
+.home-delta--down { color: var(--accent); }
 .dashboard-breakdown {
   display: grid;
   grid-template-columns: 1fr 1fr;
