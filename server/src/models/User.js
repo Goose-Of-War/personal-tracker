@@ -6,6 +6,12 @@ const userSchema = new mongoose.Schema(
     username: { type: String, required: true, unique: true, trim: true, lowercase: true },
     passwordHash: { type: String, required: true },
     currency: { type: String, default: "INR", trim: true, uppercase: true },
+    themeAccent: {
+      type: String,
+      enum: ["default", "ocean", "forest", "ember", "magenta", "lavender", "twilight", "hazel", "bw"],
+      default: "default",
+    },
+    themeMode: { type: String, enum: ["light", "dark"], default: "light" },
     categories: {
       type: [
         {

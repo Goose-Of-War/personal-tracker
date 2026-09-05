@@ -47,8 +47,23 @@ export function AuthProvider({ children }) {
     setUser((u) => (u ? { ...u, currency: res.currency } : u));
   };
 
+  const updateTheme = async ({ accent, mode }) => {
+    const body = {};
+    if (accent !== undefined) body.accent = accent;
+    if (mode !== undefined) body.mode = mode;
+    const res = await api.patch("/auth/theme", body);
+    setUser((u) => (u ? { ...u, themeAccent: res.accent, themeMode: res.mode } : u));
+  };
+
+  // Apply the user's theme to <html> so every page/components follow instantly.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.themeaccent = user?.themeAccent || "default";
+    root.dataset.thememode = user?.themeMode || "light";
+  }, [user?.themeAccent, user?.themeMode]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout, updateCategories, updateCurrency }}>
+    <AuthContext.Provider value={{ user, loading, signup, login, logout, updateCategories, updateCurrency, updateTheme }}>
       {children}
     </AuthContext.Provider>
   );

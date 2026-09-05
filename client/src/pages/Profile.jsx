@@ -4,8 +4,25 @@ import NavBar from "../components/NavBar.jsx";
 
 const COMMON_CURRENCIES = ["INR", "USD", "EUR", "GBP"];
 
+const ACCENT_OPTIONS = [
+  { id: "default", label: "Default", color: "#2f6f4f" },
+  { id: "ocean", label: "Ocean", color: "#2f5f8f" },
+  { id: "forest", label: "Forest", color: "#1f7a4c" },
+  { id: "ember", label: "Ember", color: "#b04434" },
+  { id: "magenta", label: "Magenta", color: "#d63384" },
+  { id: "lavender", label: "Lavender", color: "#7660c4" },
+  { id: "twilight", label: "Twilight", color: "#cd6922" },
+  { id: "hazel", label: "Hazel", color: "#7a5230" },
+  { id: "bw", label: "Monochrome", color: "#4b5563" },
+];
+
+const MODE_OPTIONS = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
+
 export default function Profile() {
-  const { user, updateCategories, updateCurrency } = useAuth();
+  const { user, updateCategories, updateCurrency, updateTheme } = useAuth();
   const categories = user?.categories ?? [];
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newSubCategory, setNewSubCategory] = useState({}); // { [categoryName]: draft text }
@@ -13,7 +30,33 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [currencyError, setCurrencyError] = useState("");
   const [savingCurrency, setSavingCurrency] = useState(false);
+  const [themeError, setThemeError] = useState("");
+  const [savingTheme, setSavingTheme] = useState(false);
   const [dragIndex, setDragIndex] = useState(null); // drag-and-drop reorder of categories
+
+  const handleAccentChange = async (accent) => {
+    setThemeError("");
+    setSavingTheme(true);
+    try {
+      await updateTheme({ accent });
+    } catch (err) {
+      setThemeError(err.message);
+    } finally {
+      setSavingTheme(false);
+    }
+  };
+
+  const handleModeChange = async (mode) => {
+    setThemeError("");
+    setSavingTheme(true);
+    try {
+      await updateTheme({ mode });
+    } catch (err) {
+      setThemeError(err.message);
+    } finally {
+      setSavingTheme(false);
+    }
+  };
 
   const handleCurrencyChange = async (e) => {
     const value = e.target.value;
@@ -111,6 +154,43 @@ export default function Profile() {
           ))}
         </select>
         {currencyError && <p className="form-error">{currencyError}</p>}
+      </div>
+
+      <div className="category-manager__group" style={{ marginBottom: "1.5rem" }}>
+        <div className="category-manager__group-header">
+          <strong>Colour theme</strong>
+        </div>
+        <p className="page-hint">Pick an accent colour and a light/dark mode — applies to every page.</p>
+        <div className="theme-accent-row">
+          {ACCENT_OPTIONS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              className={`theme-swatch${user?.themeAccent === a.id ? " theme-swatch--active" : ""}`}
+              onClick={() => handleAccentChange(a.id)}
+              disabled={savingTheme}
+              title={a.label}
+              aria-label={a.label}
+            >
+              <span className="theme-swatch__dot" style={{ backgroundColor: a.color }} />
+              {a.label}
+            </button>
+          ))}
+        </div>
+        <div className="theme-mode-row">
+          {MODE_OPTIONS.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              className={`theme-mode${user?.themeMode === m.id ? " theme-mode--active" : ""}`}
+              onClick={() => handleModeChange(m.id)}
+              disabled={savingTheme}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {themeError && <p className="form-error">{themeError}</p>}
       </div>
 
       <div className="category-manager">

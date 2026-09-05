@@ -5,6 +5,10 @@ import { createSession, destroySession, SESSION_COOKIE_NAME, cookieOptions } fro
 
 const SALT_ROUNDS = 12;
 
+// Colour theme options (Profile page). "default" = the original light palette.
+const THEME_ACCENTS = ["default", "ocean", "forest", "ember", "magenta", "lavender", "twilight", "hazel", "bw"];
+const THEME_MODES = ["light", "dark"];
+
 // Default categories seeded for every new signup (§1a of the spec - the exact
 // default list was left TBD there; this is a starting-point guess, flagged in
 // claude-records.log for you to confirm or replace).
@@ -54,6 +58,8 @@ export async function signup(req, res) {
     username: user.username,
     categories: user.categories,
     currency: user.currency,
+    themeAccent: user.themeAccent,
+    themeMode: user.themeMode,
   });
 }
 
@@ -81,6 +87,8 @@ export async function login(req, res) {
     username: user.username,
     categories: user.categories,
     currency: user.currency,
+    themeAccent: user.themeAccent,
+    themeMode: user.themeMode,
   });
 }
 
@@ -92,9 +100,17 @@ export async function logout(req, res) {
 }
 
 export async function me(req, res) {
-  const user = await User.findById(req.userId).select("name username categories currency");
+  const user = await User.findById(req.userId).select("name username categories currency themeAccent themeMode");
   if (!user) return res.status(404).json({ error: "User not found" });
-  res.json({ id: user._id, name: user.name, username: user.username, categories: user.categories, currency: user.currency });
+  res.json({
+    id: user._id,
+    name: user.name,
+    username: user.username,
+    categories: user.categories,
+    currency: user.currency,
+    themeAccent: user.themeAccent,
+    themeMode: user.themeMode,
+  });
 }
 
 // Fixed currency per user (§8 decision: single currency, editable in Profile,
@@ -112,6 +128,31 @@ export async function updateCurrency(req, res) {
     { new: true }
   ).select("currency");
   res.json({ currency: user.currency });
+}
+
+// Colour theme per user (Profile page). Two independent bits — accent + mode —
+// each with its own enum; the body may update either one (or both) at a time.
+export async function updateTheme(req, res) {
+  const { accent, mode } = req.body;
+  const update = {};
+  if (accent !== undefined) {
+    if (!THEME_ACCENTS.includes(accent)) {
+      return res.status(400).json({ error: `accent must be one of: ${THEME_ACCENTS.join(", ")}` });
+    }
+    update.themeAccent = accent;
+  }
+  if (mode !== undefined) {
+    if (!THEME_MODES.includes(mode)) {
+      return res.status(400).json({ error: `mode must be one of: ${THEME_MODES.join(", ")}` });
+    }
+    update.themeMode = mode;
+  }
+  if (Object.keys(update).length === 0) {
+    return res.status(400).json({ error: "provide an accent and/or a mode to update" });
+  }
+  const user = await User.findByIdAndUpdate(req.userId, update, { new: true }).select("themeAccent themeMode");
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json({ accent: user.themeAccent, mode: user.themeMode });
 }
 
 // Replaces the user's whole categories list (Profile page). Per the confirmed

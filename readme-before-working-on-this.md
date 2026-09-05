@@ -298,8 +298,13 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
 4. **Transactions page**
    - List of transactions (paginated), filterable by month (defaults to the current
      month; a control lets you step to a different month) — see §3's `month` filter.
-   - Within the current view, transactions are grouped under a heading per date (day)
-     they occurred on, rather than one flat list mixing all dates together.
+- Within the current view, transactions are grouped under a heading per date (day)
+      they occurred on, rather than one flat list mixing all dates together.
+   - **Transaction amounts are colour-coded by type, independent of the colour
+      theme:** deposits show **green**, expenses show **red**, transfers use the
+      **neutral text colour** (light/dark depending on the theme). Implemented via
+      theme-independent `--positive`/`--negative` tokens (brightened in dark
+      mode) and `--text` for transfers in `TransactionList.jsx`.
    - Add new transaction (modal/form): type, date, category, sub-category, primary
      account + amount, secondary account + amount (conditional on `transfer`, or on an
      optional "split" toggle when type is `expense`), and an optional note (free text,
@@ -330,9 +335,14 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
      order in `categories[]`, which `PATCH /api/auth/categories` preserves), so
      the pickers/Profile listing reflect that order. Implemented via HTML5
      drag-and-drop (no library) on the Profile page.
-   - **Subcategories are lexicographically sorted** (alphabetical) rather than
-     creation order — sorted at render in the Profile page and the transaction
-     form's sub-category select.
+- **Subcategories are lexicographically sorted** (alphabetical) rather than
+      creation order — sorted at render in the Profile page and the transaction
+      form's sub-category select.
+   - **Colour theme picker (implemented 2026-09-01):** two
+      controls — **Accent** (Default/Ocean/Forest/Ember/Magenta/Lavender/
+      Twilight/Hazel/Monochrome) and **Mode** (Light/Dark); every accent works
+      in both modes. Choice persists per-user. Documented in full in the
+      *(Theme)* note near the Currency note below.
 
 6. **Legal page** (new)
    - Static Privacy Policy & Terms of Use content. Public route, reachable
@@ -613,6 +623,25 @@ implementation as above.
   (`formatMoney()` in `client/src/lib/money.js`) prefixes the currency
   symbol; the plain `toDisplay()` used to seed editable amount inputs is
   untouched, since those need a bare number, not a symbol-prefixed one.
+- **(Theme, implemented 2026-09-01):** per-user colour themes organised as
+  **two independent controls on the Profile page**:
+  - **Accent** (9): `default` (current green), `ocean` (blue), `forest` (green),
+    `ember` (red), `magenta` (pink), `lavender` (purple), `twilight` (orange),
+    `hazel` (brown), `bw` (black-and-white / monochrome).
+  - **Mode** (2): `light`, `dark` — **every accent works in both modes** (14
+    combinations total). Default: default/light = today's palette.
+  - Stored on the `User` model as two fields: `themeAccent` (enum above,
+    default `default`) and `themeMode` (`light|dark`, default `light`). Edited
+    via `PATCH /api/auth/theme` `{ accent, mode }` (each field validated against
+    its enum; partial bodies allowed). `GET /api/auth/me` plus signup/login
+    responses include both.
+  - Client applies them by setting `data-themeaccent` and `data-thememode` on
+    `<html>`; CSS overrides the custom properties per mode (neutral tokens:
+    `--bg`, `--surface`, `--border`, `--text`, `--muted`) and per accent
+    (colour tokens: `--accent`, `--danger`, `--credit`, `--savings`,
+    `--investment`, `--loan`, `--iou`), so every page picks the scheme up
+    without per-component changes. Hardcoded chart palette colours (e.g. the
+    Home chunk colours) stay as-is — they read fine on both light and dark.
 - **Credit limit**: `balanceEngine.js` now exports `assertWithinCreditLimits`
   — sums the net delta per account and rejects (400, before anything is
   written) if a credit/loan account's projected balance would exceed its
@@ -671,6 +700,11 @@ All requested on 2026-08-30 have been implemented:
    (top 3 categories + "Other", distinct colours, no per-chunk amounts), total +
    (avg/day) with a black % delta and a red ▲ / green ▼ triangle, backed by
    `GET /api/home/expense-stats`.
+9. **Colour themes.** Per-user **Accent** (Default/Ocean/Forest/Ember/Magenta/
+   Lavender/Twilight/Hazel/Monochrome) × **Mode** (Light/Dark) pickers on the
+   Profile page; `User.themeAccent`+`themeMode`, `PATCH /api/auth/theme`,
+   `data-themeaccent`+`data-thememode` on `<html>` with CSS overrides for the
+   neutral (mode) and colour (accent) tokens.
 
 Not yet run against a live MongoDB (see claude-records.log) — build/syntax-checked
 only.

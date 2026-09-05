@@ -6,12 +6,87 @@
   --muted: #6b7280;
   --accent: #2f6f4f;
   --danger: #b3441f;
+  --positive: #15803d; /* theme-independent "money in" (deposits) */
+  --negative: #b91c1c; /* theme-independent "money out" (expenses) */
   --credit: #b3441f;
   --savings: #2f6f4f;
   --investment: #2f5f8f;
   --loan: #8f2f4f;
   --iou: #8a5a1f;
   font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* Dark mode: neutral (non-colour) tokens only — accents come from the
+   data-themeaccent blocks below, which work in both modes. */
+:root[data-thememode="dark"] {
+  --bg: #141518;
+  --surface: #1c1e23;
+  --border: #2e3138;
+  --text: #e6e8ec;
+  --muted: #9aa1ac;
+  --positive: #4ade80; /* brighter green for dark backgrounds */
+  --negative: #f87171; /* brighter red for dark backgrounds */
+}
+
+/* Accent palettes (colour tokens). --danger/--credit stay the familiar red for
+   every accent unless that accent explicitly overrides them (bw). */
+:root[data-themeaccent="ocean"] {
+  --accent: #2f5f8f;
+  --savings: #2f5f8f;
+  --investment: #3a6ea5;
+  --loan: #8a4a7a;
+  --iou: #8a6a1f;
+}
+:root[data-themeaccent="forest"] {
+  --accent: #1f7a4c;
+  --savings: #1f7a4c;
+  --investment: #2f6f8f;
+  --loan: #7a3b5e;
+  --iou: #7d6a1f;
+}
+:root[data-themeaccent="ember"] {
+  --accent: #b04434;
+  --savings: #b04434;
+  --investment: #c2685a;
+  --loan: #8f2f4f;
+  --iou: #a0621f;
+}
+:root[data-themeaccent="magenta"] {
+  --accent: #d63384;
+  --savings: #d63384;
+  --investment: #e066a3;
+  --loan: #a13156;
+  --iou: #b3871f;
+}
+:root[data-themeaccent="lavender"] {
+  --accent: #7660c4;
+  --savings: #7660c4;
+  --investment: #9377d9;
+  --loan: #8f5f9b;
+  --iou: #9c7a2a;
+}
+:root[data-themeaccent="twilight"] {
+  --accent: #cd6922;
+  --savings: #cd6922;
+  --investment: #d98f4a;
+  --loan: #9b5f6e;
+  --iou: #b08a1f;
+}
+:root[data-themeaccent="hazel"] {
+  --accent: #7a5230;
+  --savings: #7a5230;
+  --investment: #9a704a;
+  --loan: #7a4a3a;
+  --iou: #8a7a3a;
+}
+:root[data-themeaccent="bw"] {
+  --accent: #4b5563;
+  --savings: #4b5563;
+  --investment: #6b7280;
+  --loan: #374151;
+  --iou: #52575c;
+  --danger: #111827;
+  --credit: #111827;
 }
 
 * { box-sizing: border-box; }
@@ -374,11 +449,53 @@ label {
 }
 .transaction-row__amount { font-weight: 700; }
 .transaction-row__duplicate { font-size: 0.75rem; text-decoration: none; }
-.transaction-row--expense .transaction-row__amount { color: var(--credit); }
-.transaction-row--deposit .transaction-row__amount { color: var(--savings); }
+.transaction-row--expense .transaction-row__amount { color: var(--negative); }
+.transaction-row--deposit .transaction-row__amount { color: var(--positive); }
+.transaction-row--transfer .transaction-row__amount { color: var(--text); }
 .transaction-row__date { font-size: 0.8rem; color: var(--muted); }
 
 /* Profile / category manager */
+.theme-accent-row,
+.theme-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.theme-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+.theme-swatch__dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+.theme-swatch--active {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.theme-mode {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.4rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+.theme-mode--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
 .category-manager {
   margin: 0 1.5rem;
   display: flex;
