@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import NavBar from "../components/NavBar.jsx";
+import { api } from "../api/client.js";
 
 const COMMON_CURRENCIES = ["INR", "USD", "EUR", "GBP"];
 
@@ -8,7 +9,7 @@ const ACCENT_OPTIONS = [
   { id: "default", label: "Default", color: "#2f6f4f" },
   { id: "ocean", label: "Ocean", color: "#2f5f8f" },
   { id: "forest", label: "Forest", color: "#1f7a4c" },
-  { id: "ember", label: "Ember", color: "#b04434" },
+  { id: "ember", label: "Ember", color: "#c83f33" },
   { id: "magenta", label: "Magenta", color: "#d63384" },
   { id: "lavender", label: "Lavender", color: "#7660c4" },
   { id: "twilight", label: "Twilight", color: "#cd6922" },
@@ -33,6 +34,41 @@ export default function Profile() {
   const [themeError, setThemeError] = useState("");
   const [savingTheme, setSavingTheme] = useState(false);
   const [dragIndex, setDragIndex] = useState(null); // drag-and-drop reorder of categories
+  // Transaction templates (saved from the transaction form, managed here)
+  const [templates, setTemplates] = useState([]);
+  const [templatesError, setTemplatesError] = useState("");
+  const [templateDeleting, setTemplateDeleting] = useState(""); // id being deleted
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/templates")
+      .then((list) => {
+        if (active) setTemplates(list);
+      })
+      .catch((err) => {
+        if (active) setTemplatesError(err.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleDeleteTemplate = async (template) => {
+    const snapshot = templates;
+    setTemplateDeleting(template._id);
+    setTemplatesError("");
+    // Optimistic: hide the template immediately; restore on failure.
+    setTemplates((cur) => cur.filter((t) => t._id !== template._id));
+    try {
+      await api.delete(`/templates/${template._id}`);
+    } catch (err) {
+      setTemplates(snapshot);
+      setTemplatesError(err.message);
+    } finally {
+      setTemplateDeleting("");
+    }
+  };
 
   const handleAccentChange = async (accent) => {
     setThemeError("");
@@ -191,6 +227,41 @@ export default function Profile() {
           ))}
         </div>
         {themeError && <p className="form-error">{themeError}</p>}
+      </div>
+
+      <div className="category-manager__group" style={{ marginBottom: "1.5rem" }}>
+        <div className="category-manager__group-header">
+          <strong>Transaction templates</strong>
+        </div>
+        <p className="page-hint">
+          Saved from the transaction form ("Save as template"). Start a new transaction from one via the
+          "Start from a template" dropdown.
+        </p>
+        {templatesError && <p className="form-error">{templatesError}</p>}
+        {templates.length === 0 ? (
+          <p className="page-hint">No templates yet — open a new transaction and hit "Save as template".</p>
+        ) : (
+          <ul className="template-manage-list">
+            {templates.map((t) => (
+              <li key={t._id}>
+                <span className="template-manage-list__name">{t.name}</span>
+                <span className="template-manage-list__details">
+                  {t.type} · {t.category || "uncategorized"}
+                  {t.subCategory ? ` / ${t.subCategory}` : ""}
+                  {t.note ? ` — ${t.note}` : ""}
+                </span>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => handleDeleteTemplate(t)}
+                  disabled={templateDeleting === t._id}
+                >
+                  {templateDeleting === t._id ? "…" : "Delete"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="category-manager">

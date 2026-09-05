@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useAccounts } from "../context/AccountsContext.jsx";
@@ -6,6 +6,7 @@ import NavBar from "../components/NavBar.jsx";
 import TransactionList from "../components/TransactionList.jsx";
 import TransactionForm from "../components/TransactionForm.jsx";
 import { currentMonth, shiftMonth, monthLabel } from "../lib/monthNav.js";
+import { toSmallestUnit, accountDisplayName } from "../lib/money.js";
 
 const PAGE_SIZE = 20;
 
@@ -20,6 +21,49 @@ export default function Transactions() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(undefined); // undefined = closed, null = new, object = edit
   const [duplicating, setDuplicating] = useState(undefined); // undefined = closed, object = template to duplicate as new
+  // Frontend-only filters. Seeded from the URL (so a filtered/shared link keeps
+  // its filters) and mirrored back into the address bar via history.replaceState.
+  const [filters, setFilters] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      type: params.get("type") || "",
+      category: params.get("category") || "",
+      primaryAccount: params.get("primaryAccount") || "",
+      secondaryAccount: params.get("secondaryAccount") || "",
+      min: params.get("min") || "",
+      max: params.get("max") || "",
+    };
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== "" && value != null) params.set(key, value);
+    });
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [filters]);
+
+  const hasActiveFilters = Object.values(filters).some((v) => v !== "");
+
+  const filteredTransactions = useMemo(() => {
+    if (!hasActiveFilters) return transactions;
+    const minUnit = filters.min !== "" ? toSmallestUnit(filters.min) : null;
+    const maxUnit = filters.max !== "" ? toSmallestUnit(filters.max) : null;
+    return transactions.filter((t) => {
+      if (filters.type && t.type !== filters.type) return false;
+      if (filters.category && (t.category || "") !== filters.category) return false;
+      if (filters.primaryAccount && String(t.primaryAccount) !== filters.primaryAccount) return false;
+      if (filters.secondaryAccount && String(t.secondaryAccount || "") !== filters.secondaryAccount) return false;
+      if (minUnit !== null && t.primaryAmount < minUnit) return false;
+      if (maxUnit !== null && t.primaryAmount > maxUnit) return false;
+      return true;
+    });
+  }, [transactions, filters, hasActiveFilters]);
+
+  const clearFilters = () => setFilters({ type: "", category: "", primaryAccount: "", secondaryAccount: "", min: "", max: "" });
+
+  const setFilter = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
 
   const load = async (targetPage = page, targetMonth = month) => {
     setLoading(true);
@@ -126,12 +170,62 @@ export default function Transactions() {
 
       {!loading && !error && (
         <>
-          <TransactionList
-            transactions={transactions}
-            accountsById={accountsById}
-            onSelect={setEditing}
-            onDuplicate={setDuplicating}
-          />
+          <div className="filter-bar">
+            <select value={filters.type} onChange={setFilter("type")} aria-label="Type">
+              <option value="">All types</option>
+              <option value="deposit">Deposit</option>
+              <option value="expense">Expense</option>
+              <option value="transfer">Transfer</option>
+            </select>
+            <select value={filters.category} onChange={setFilter("category")} aria-label="Category">
+              <option value="">Any category</option>
+              {(user?.categories ?? []).map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select value={filters.primaryAccount} onChange={setFilter("primaryAccount")} aria-label="Primary account">
+              <option value="">Any account</option>
+              {accounts.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {accountDisplayName(a)}
+                </option>
+              ))}
+            </select>
+            <select value={filters.secondaryAccount} onChange={setFilter("secondaryAccount")} aria-label="Secondary account">
+              <option value="">Any secondary account</option>
+              {accounts.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {accountDisplayName(a)}
+                </option>
+              ))}
+            </select>
+            <input type="number" step="0.01" placeholder="Min amount" value={filters.min} onChange={setFilter("min")} />
+            <input type="number" step="0.01" placeholder="Max amount" value={filters.max} onChange={setFilter("max")} />
+            {hasActiveFilters && (
+              <button type="button" className="button-secondary" onClick={clearFilters}>
+                Reset
+              </button>
+            )}
+          </div>
+
+          {hasActiveFilters && (
+            <p className="page-hint">
+              Showing {filteredTransactions.length} of {transactions.length} in this page.
+            </p>
+          )}
+
+          {filteredTransactions.length === 0 && hasActiveFilters ? (
+            <p className="page-hint">No transactions match the current filters.</p>
+          ) : (
+            <TransactionList
+              transactions={filteredTransactions}
+              accountsById={accountsById}
+              onSelect={setEditing}
+              onDuplicate={setDuplicating}
+            />
+          )}
 
           {totalPages > 1 && (
             <div className="pagination">

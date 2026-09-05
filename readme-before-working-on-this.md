@@ -646,8 +646,8 @@ implementation as above.
     `PATCH /api/auth/theme` call happens in the background. If it fails, the
     UI reverts to the previous theme and the error is shown on the Profile
     page.
-- **(Frontend background sync + diagnostics — requested 2026-09-02, pending
-  go-ahead):** generalises the optimistic pattern to ALL data mutations and
+- **(Frontend background sync + diagnostics — implemented 2026-09-05, shipped with
+  the v1.0.0 tag):** generalises the optimistic pattern to ALL data mutations and
   adds retry + an error log.
   - **Scope:** transactions (add/edit/duplicate/delete), accounts
     (add/edit/archive), categories + currency (Profile). Every mutation applies
@@ -668,6 +668,32 @@ implementation as above.
     entries) is appended to a `localStorage` log.
   - **Diagnostics page:** new **protected** route `/diagnostics/errors` renders
     the localStorage error log (table + clear action; empty state when none).
+- **(Transaction filters — implemented 2026-09-05):** a filter
+  bar on the Transactions page (between the month nav and the list) for
+  **type** (deposit/expense/transfer), **category** (from the user's configured
+  categories), **primary account**, **secondary account**, and an **amount
+  range** (min + max, against `primaryAmount`). **Frontend-only, in-memory**
+  filtering of the loaded list (no server changes); a "Reset" button clears all
+  filters. The applied filters are mirrored into the browser address bar via
+  `history.replaceState` (`?type=&category=&primaryAccount=&secondaryAccount=&
+  min=&max=`) and re-read from `window.location.search` on mount, so a filtered
+  view survives refresh and is shareable. Accepted limitation: because listing
+  is server-paginated (20/page), in-memory filters only see the currently
+  loaded page.
+- **(Transaction templates — implemented 2026-09-05):** save a
+  transaction as a reusable template, then start a new transaction from one
+  instead of typing everything. Backed by a **new collection** (Mongoose
+  `TransactionTemplate`, collection `transactiontemplates`), per-user, storing
+  the full transaction shape: `name`, `type`, `category`, `subCategory`,
+  `primaryAccount` (+ `primaryAmount`), `secondaryAccount` (+
+  `secondaryAmount`), `note`. New endpoints `GET /api/templates`,
+  `POST /api/templates` (validated; carries the Idempotency-Key create-dedup
+  like transactions/accounts), `DELETE /api/templates/:id` — all `requireAuth`.
+  UI: the new-transaction/duplicate form's **first input** is a template
+  dropdown ("Blank transaction" + saved templates); picking one pre-fills the
+  form (date always today). A **"Save as template"** button in the form (new
+  and edit) saves the current values with an auto-suggested name. Templates are
+  listed and **deleted on the Profile page**.
 - **Credit limit**: `balanceEngine.js` now exports `assertWithinCreditLimits`
   — sums the net delta per account and rejects (400, before anything is
   written) if a credit/loan account's projected balance would exceed its
@@ -731,6 +757,28 @@ All requested on 2026-08-30 have been implemented:
    Profile page; `User.themeAccent`+`themeMode`, `PATCH /api/auth/theme`,
    `data-themeaccent`+`data-thememode` on `<html>` with CSS overrides for the
    neutral (mode) and colour (accent) tokens.
+10. **Transaction filters (frontend-only + browser URL sync).** Filter bar on
+    the Transactions page (type, category, primary/secondary account, amount
+    min/max); filters apply in-memory to the currently loaded page and are
+    mirrored into the address bar (`?type=&category=&primaryAccount=&
+    secondaryAccount=&min=&max=`) via `history.replaceState`, then restored
+    from the URL on mount so a filtered view survives refresh/sharing. Accepted
+    limitation: with server-side pagination (20/page) in-memory filters only
+    see the loaded page.
+11. **Transaction templates.** New `transactiontemplates` collection
+    (`TransactionTemplate` model): per-user named blueprints holding the full
+    transaction shape (type, category, subCategory, accounts, amounts, note) —
+    no date. `GET/POST /api/templates`, `DELETE /api/templates/:id`
+    (`requireAuth`; POST carries the Idempotency-Key create-dedup). The
+    new/duplicate transaction form leads with a "Start from a template"
+    dropdown (Blank + saved templates) that pre-fills everything except date;
+    a "Save as template" button (new + edit forms) stores the current values
+    with an auto-suggested name; templates are listed and deleted on the
+    Profile page.
+12. **Duplicate seeds today's date** (not the source transaction's) — a minor
+    fix riding along with the above.
+13. **`--danger` recoloured to hot red `#bf0000`** — subtle in light mode, kept
+    red even in the `bw` accent (monochrome). Minor fix, not individually logged.
 
 Not yet run against a live MongoDB (see claude-records.log) — build/syntax-checked
 only.

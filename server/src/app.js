@@ -4,6 +4,7 @@ import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import accountRoutes from "./routes/account.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
+import templateRoutes from "./routes/template.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import homeRoutes from "./routes/home.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -22,6 +23,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/templates", templateRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/home", homeRoutes);
 

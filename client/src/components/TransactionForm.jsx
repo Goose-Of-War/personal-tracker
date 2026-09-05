@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toDisplay, toSmallestUnit, accountDisplayName } from "../lib/money.js";
 import { ACCOUNT_TYPES } from "../lib/accountTypes.js";
+import { api } from "../api/client.js";
 
 const TYPE_ORDER = ACCOUNT_TYPES.map((t) => t.value);
 
@@ -24,7 +25,7 @@ export default function TransactionForm({ transaction, accounts, categories = []
   const sortedAccounts = [...accounts].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
   const [form, setForm] = useState({
     type: transaction?.type ?? "expense",
-    date: toDateInputValue(transaction?.date),
+    date: toDateInputValue(isDuplicate ? undefined : transaction?.date),
     category: transaction?.category ?? "",
     subCategory: transaction?.subCategory ?? "",
     primaryAccount: transaction?.primaryAccount ?? sortedAccounts[0]?._id ?? "",
@@ -36,6 +37,27 @@ export default function TransactionForm({ transaction, accounts, categories = []
   });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Templates (only relevant when starting a new transaction)
+  const [templates, setTemplates] = useState([]);
+  const [templateId, setTemplateId] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
+
+  useEffect(() => {
+    if (!isNew) return;
+    let active = true;
+    api
+      .get("/templates")
+      .then((list) => {
+        if (active) setTemplates(list);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [isNew]);
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
@@ -52,31 +74,75 @@ export default function TransactionForm({ transaction, accounts, categories = []
     setForm((f) => ({ ...f, category: e.target.value, subCategory: "" }));
   };
 
+  // Picking a template pre-fills every field except the date (always today).
+  const handleTemplateSelect = (e) => {
+    const value = e.target.value;
+    setTemplateId(value);
+    const t = templates.find((x) => x._id === value);
+    if (!t) return;
+    setForm((f) => ({
+      ...f,
+      type: t.type,
+      category: t.category ?? "",
+      subCategory: t.subCategory ?? "",
+      primaryAccount: sortedAccounts.some((a) => a._id === t.primaryAccount) ? t.primaryAccount : "",
+      primaryAmount: toDisplay(t.primaryAmount),
+      split: t.type === "expense" && !!t.secondaryAccount,
+      secondaryAccount: t.secondaryAccount ?? "",
+      secondaryAmount: t.secondaryAmount != null ? toDisplay(t.secondaryAmount) : "",
+      note: t.note ?? "",
+    }));
+  };
+
+  const buildPayload = () => {
+    const payload = {
+      type: form.type,
+      date: form.date,
+      category: form.category,
+      subCategory: form.subCategory,
+      primaryAccount: form.primaryAccount,
+      primaryAmount: toSmallestUnit(form.primaryAmount || "0"),
+      note: form.note,
+    };
+    if (form.type === "transfer") {
+      payload.secondaryAccount = form.secondaryAccount;
+      // Left blank -> backend defaults secondaryAmount to primaryAmount.
+      payload.secondaryAmount = form.secondaryAmount !== "" ? toSmallestUnit(form.secondaryAmount) : undefined;
+    } else if (form.type === "expense" && form.split) {
+      // Split expense: unlike transfer, there's no sensible default for a partial
+      // share, so secondaryAmount is required whenever split is on.
+      payload.secondaryAccount = form.secondaryAccount;
+      payload.secondaryAmount = toSmallestUnit(form.secondaryAmount || "0");
+    }
+    return payload;
+  };
+
+  const suggestedTemplateName = `${form.type} · ${form.category || "uncategorized"}`;
+
+  const saveAsTemplate = async () => {
+    setError("");
+    setTemplateBusy(true);
+    try {
+      const payload = buildPayload();
+      delete payload.date; // templates have no fixed date
+      await api.post("/templates", { ...payload, name: templateName.trim() || suggestedTemplateName });
+      setTemplates(await api.get("/templates"));
+      setSavingTemplate(false);
+      setTemplateName("");
+      setTemplateSaved(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     try {
-      const payload = {
-        type: form.type,
-        date: form.date,
-        category: form.category,
-        subCategory: form.subCategory,
-        primaryAccount: form.primaryAccount,
-        primaryAmount: toSmallestUnit(form.primaryAmount || "0"),
-        note: form.note,
-      };
-      if (form.type === "transfer") {
-        payload.secondaryAccount = form.secondaryAccount;
-        // Left blank -> backend defaults secondaryAmount to primaryAmount.
-        payload.secondaryAmount = form.secondaryAmount !== "" ? toSmallestUnit(form.secondaryAmount) : undefined;
-      } else if (form.type === "expense" && form.split) {
-        // Split expense: unlike transfer, there's no sensible default for a partial
-        // share, so secondaryAmount is required whenever split is on.
-        payload.secondaryAccount = form.secondaryAccount;
-        payload.secondaryAmount = toSmallestUnit(form.secondaryAmount || "0");
-      }
-      await onSave(payload);
+      await onSave(buildPayload());
       onClose();
     } catch (err) {
       setError(err.message);
@@ -89,6 +155,20 @@ export default function TransactionForm({ transaction, accounts, categories = []
     <div className="overlay-backdrop" onClick={onClose}>
       <form className="overlay-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <h2>{isNew ? (isDuplicate ? "Duplicate transaction" : "New transaction") : "Edit transaction"}</h2>
+
+        {isNew && templates.length > 0 && (
+          <label>
+            Start from a template
+            <select value={templateId || ""} onChange={handleTemplateSelect}>
+              <option value="">Blank transaction</option>
+              {templates.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label>
           Type
@@ -196,11 +276,32 @@ export default function TransactionForm({ transaction, accounts, categories = []
           <input value={form.note} onChange={update("note")} placeholder="Optional" />
         </label>
 
+        {savingTemplate && (
+          <div className="template-save-name">
+            <label>
+              Template name
+              <input
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder={`Default: ${suggestedTemplateName}`}
+                autoFocus
+              />
+            </label>
+            <button type="button" onClick={saveAsTemplate} disabled={templateBusy}>
+              {templateBusy ? "Saving…" : "Save template"}
+            </button>
+          </div>
+        )}
+        {templateSaved && <p className="page-hint">Template saved.</p>}
+
         {error && <p className="form-error">{error}</p>}
 
         <div className="overlay-actions">
           <button type="button" className="button-secondary" onClick={onClose}>
             Cancel
+          </button>
+          <button type="button" className="button-secondary" onClick={() => setSavingTemplate((s) => !s)}>
+            {savingTemplate ? "Cancel template" : "Save as template"}
           </button>
           {!isNew && (
             <button type="button" className="button-danger" onClick={() => onDelete(transaction)}>
