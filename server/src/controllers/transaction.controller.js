@@ -84,6 +84,7 @@ export async function getTransaction(req, res) {
 
 export async function createTransaction(req, res) {
   const { type, date, category = "", subCategory = "", primaryAccount, primaryAmount, secondaryAccount, secondaryAmount, note = "" } = req.body;
+  const idempotencyKey = req.headers["idempotency-key"];
 
   const candidate = {
     type,
@@ -109,7 +110,25 @@ export async function createTransaction(req, res) {
 
   const accountsMap = await loadOwnedAccountsMap(req.userId, [candidate.primaryAccount, candidate.secondaryAccount]);
 
-  const transaction = await Transaction.create({ userId: req.userId, ...candidate });
+  // Replayed/retried POST? The client reuses its Idempotency-Key across retries,
+  // so a network hiccup after a successful create must not create a duplicate —
+  // and must not re-apply the balance effects a second time.
+  if (idempotencyKey) {
+    const existing = await Transaction.findOne({ userId: req.userId, idempotencyKey });
+    if (existing) return res.status(200).json(existing);
+  }
+
+  let transaction;
+  try {
+    transaction = await Transaction.create({ userId: req.userId, ...candidate, ...(idempotencyKey ? { idempotencyKey } : {}) });
+  } catch (err) {
+    // Unlikely concurrent duplicate on the same key: treat as an idempotent success.
+    if (idempotencyKey && err && err.code === 11000) {
+      const existing = await Transaction.findOne({ userId: req.userId, idempotencyKey });
+      if (existing) return res.status(200).json(existing);
+    }
+    throw err;
+  }
   try {
     const effects = computeEffects(transaction, accountsMap);
     assertWithinCreditLimits(effects, accountsMap);

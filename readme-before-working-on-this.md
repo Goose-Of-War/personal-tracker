@@ -642,6 +642,32 @@ implementation as above.
     `--investment`, `--loan`, `--iou`), so every page picks the scheme up
     without per-component changes. Hardcoded chart palette colours (e.g. the
     Home chunk colours) stay as-is — they read fine on both light and dark.
+  - **Optimistic switching:** the theme is applied in the UI immediately; the
+    `PATCH /api/auth/theme` call happens in the background. If it fails, the
+    UI reverts to the previous theme and the error is shown on the Profile
+    page.
+- **(Frontend background sync + diagnostics — requested 2026-09-02, pending
+  go-ahead):** generalises the optimistic pattern to ALL data mutations and
+  adds retry + an error log.
+  - **Scope:** transactions (add/edit/duplicate/delete), accounts
+    (add/edit/archive), categories + currency (Profile). Every mutation applies
+    its change to the UI immediately, syncs to the API in the background, and
+    on failure restores the previous in-memory snapshot (with the API's error
+    surfaced inline where the action happened).
+  - **Retry:** up to **5 attempts** for network errors and 5xx responses
+    (short backoff); 4xx validation errors are **not** retried (they cannot
+    succeed and only waste a request).
+  - **Idempotent creates:** every POST carries a client-generated
+    `Idempotency-Key` header (generated once per logical create, reused across
+    retries). Server-side, creates check that key against a unique index and
+    return the existing document instead of creating a duplicate — so a retried
+    create can never double-write. Covered operations: account create,
+    transaction create.
+  - **Final failure:** the user is notified via a browser `alert()`, and the
+    failed request (method, URL, body, status/error, timestamp, capped at ~50
+    entries) is appended to a `localStorage` log.
+  - **Diagnostics page:** new **protected** route `/diagnostics/errors` renders
+    the localStorage error log (table + clear action; empty state when none).
 - **Credit limit**: `balanceEngine.js` now exports `assertWithinCreditLimits`
   — sums the net delta per account and rejects (400, before anything is
   written) if a credit/loan account's projected balance would exceed its

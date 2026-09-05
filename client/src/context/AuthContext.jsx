@@ -38,21 +38,67 @@ export function AuthProvider({ children }) {
   };
 
   const updateCategories = async (categories) => {
-    const res = await api.patch("/auth/categories", { categories });
-    setUser((u) => (u ? { ...u, categories: res.categories } : u));
+    // Optimistic: show the new category list immediately, roll back on failure.
+    const prev = user?.categories;
+    setUser((u) => (u ? { ...u, categories } : u));
+    try {
+      const res = await api.patch("/auth/categories", { categories });
+      setUser((u) => (u ? { ...u, categories: res.categories } : u));
+      return res;
+    } catch (err) {
+      setUser((u) => (u ? { ...u, categories: prev } : u));
+      throw err;
+    }
   };
 
   const updateCurrency = async (currency) => {
-    const res = await api.patch("/auth/currency", { currency });
-    setUser((u) => (u ? { ...u, currency: res.currency } : u));
+    // Optimistic: show the new currency immediately, roll back on failure.
+    const prev = user?.currency;
+    setUser((u) => (u ? { ...u, currency } : u));
+    try {
+      const res = await api.patch("/auth/currency", { currency });
+      setUser((u) => (u ? { ...u, currency: res.currency } : u));
+      return res;
+    } catch (err) {
+      setUser((u) => (u ? { ...u, currency: prev } : u));
+      throw err;
+    }
   };
 
   const updateTheme = async ({ accent, mode }) => {
     const body = {};
     if (accent !== undefined) body.accent = accent;
     if (mode !== undefined) body.mode = mode;
-    const res = await api.patch("/auth/theme", body);
-    setUser((u) => (u ? { ...u, themeAccent: res.accent, themeMode: res.mode } : u));
+
+    // Optimistic: apply the new theme in the UI immediately, then persist it in
+    // the background. On API failure, revert to the previous theme.
+    const prevAccent = user?.themeAccent;
+    const prevMode = user?.themeMode;
+    setUser((u) =>
+      u
+        ? {
+            ...u,
+            themeAccent: accent ?? u.themeAccent,
+            themeMode: mode ?? u.themeMode,
+          }
+        : u
+    );
+
+    try {
+      const res = await api.patch("/auth/theme", body);
+      return res;
+    } catch (err) {
+      setUser((u) =>
+        u
+          ? {
+              ...u,
+              themeAccent: prevAccent ?? u.themeAccent,
+              themeMode: prevMode ?? u.themeMode,
+            }
+          : u
+      );
+      throw err;
+    }
   };
 
   // Apply the user's theme to <html> so every page/components follow instantly.

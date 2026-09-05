@@ -45,7 +45,7 @@ export function AccountsProvider({ children }) {
   }, [user, refresh]);
 
   return (
-    <AccountsContext.Provider value={{ accounts, loading, error, refresh }}>
+    <AccountsContext.Provider value={{ accounts, loading, error, refresh, setAccounts }}>
       {children}
     </AccountsContext.Provider>
   );

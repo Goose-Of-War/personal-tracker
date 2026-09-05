@@ -13,11 +13,15 @@ const transactionSchema = new mongoose.Schema(
     secondaryAccount: { type: mongoose.Schema.Types.ObjectId, ref: "Account", default: null },
     secondaryAmount: { type: Number, default: null },
     note: { type: String, default: "", trim: true },
+    // Client-generated idempotency key (retried POSTs reuse it so a create can
+    // never double-write). Sparse-unique: most documents won't have one.
+    idempotencyKey: { type: String, default: null },
   },
   { timestamps: true } // createdAt (audit trail) is separate from `date` (user-editable), per spec
 );
 
 transactionSchema.index({ userId: 1, primaryAccount: 1, date: -1 });
 transactionSchema.index({ userId: 1, date: -1 });
+transactionSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("Transaction", transactionSchema);

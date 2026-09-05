@@ -44,15 +44,34 @@ export async function createAccount(req, res) {
   if (error) return res.status(400).json({ error });
 
   const { name, type, balance = 0, limit = null, note = "" } = req.body;
-  const account = await Account.create({
-    userId: req.userId,
-    name: name.trim(),
-    type,
-    balance,
-    limit: LIMIT_TYPES.includes(type) ? limit : null,
-    note,
-  });
-  res.status(201).json(account);
+  const idempotencyKey = req.headers["idempotency-key"];
+
+  // Replayed/retried POST? The client reuses its Idempotency-Key across retries,
+  // so a network hiccup after a successful create must not create a duplicate.
+  if (idempotencyKey) {
+    const existing = await Account.findOne({ userId: req.userId, idempotencyKey });
+    if (existing) return res.status(200).json(existing);
+  }
+
+  try {
+    const account = await Account.create({
+      userId: req.userId,
+      name: name.trim(),
+      type,
+      balance,
+      limit: LIMIT_TYPES.includes(type) ? limit : null,
+      note,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+    });
+    return res.status(201).json(account);
+  } catch (err) {
+    // Unlikely concurrent duplicate on the same key: treat as an idempotent success.
+    if (idempotencyKey && err && err.code === 11000) {
+      const existing = await Account.findOne({ userId: req.userId, idempotencyKey });
+      if (existing) return res.status(200).json(existing);
+    }
+    throw err;
+  }
 }
 
 export async function getAccount(req, res) {

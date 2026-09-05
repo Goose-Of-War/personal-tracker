@@ -44,17 +44,52 @@ export default function Transactions() {
 
   const handleSave = async (payload) => {
     if (editing && editing._id) {
-      await api.patch(`/transactions/${editing._id}`, payload);
+      const id = editing._id;
+      const snapshot = transactions;
+      // Optimistic: apply the edit immediately.
+      setTransactions((cur) => cur.map((t) => (t._id === id ? { ...t, ...payload } : t)));
+      try {
+        const saved = await api.patch(`/transactions/${id}`, payload);
+        // Reconcile with the server's authoritative response.
+        setTransactions((cur) => cur.map((t) => (t._id === id ? saved : t)));
+        await refreshAccounts();
+      } catch (err) {
+        setTransactions(snapshot);
+        throw err;
+      }
     } else {
-      await api.post("/transactions", payload);
+      const snapshot = transactions;
+      const tempId = `temp-${Date.now()}`;
+      // Optimistic: show the new transaction while the request is in flight.
+      setTransactions((cur) => [
+        { _id: tempId, date: payload.date ? new Date(payload.date) : new Date(), ...payload },
+        ...cur,
+      ]);
+      try {
+        const created = await api.post("/transactions", payload);
+        // Swap the temp entry for the real one (keeps its position).
+        setTransactions((cur) => cur.map((t) => (t._id === tempId ? created : t)));
+        await refreshAccounts();
+      } catch (err) {
+        setTransactions(snapshot);
+        throw err;
+      }
     }
-    await Promise.all([load(page, month), refreshAccounts()]);
   };
 
   const handleDelete = async (transaction) => {
-    await api.delete(`/transactions/${transaction._id}`);
+    const snapshot = transactions;
+    // Optimistic: remove it immediately.
+    setTransactions((cur) => cur.filter((t) => t._id !== transaction._id));
     setEditing(undefined);
-    await Promise.all([load(page, month), refreshAccounts()]);
+    setDuplicating(undefined);
+    try {
+      await api.delete(`/transactions/${transaction._id}`);
+      await refreshAccounts();
+    } catch (err) {
+      setTransactions(snapshot);
+      throw err;
+    }
   };
 
   const goToPage = (p) => {

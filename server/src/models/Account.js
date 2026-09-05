@@ -10,10 +10,14 @@ const accountSchema = new mongoose.Schema(
     limit: { type: Number, default: null }, // only meaningful for type: 'credit'
     note: { type: String, default: "", trim: true },
     archived: { type: Boolean, default: false },
+    // Client-generated idempotency key (retried POSTs reuse it so a create can
+    // never double-write). Sparse-unique: most documents won't have one.
+    idempotencyKey: { type: String, default: null },
   },
   { timestamps: true }
 );
 
 accountSchema.index({ userId: 1, archived: 1 });
+accountSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("Account", accountSchema);
