@@ -675,14 +675,15 @@ implementation as above.
     return the existing document instead of creating a duplicate — so a retried
     create can never double-write. Covered operations: account create,
     transaction create.
-  - **Keyless creates never persist an explicit `null`:** the idempotency index
-    is a **partial** unique index (`partialFilterExpression: { idempotencyKey:
-    { $type: "string" } }`) rather than `sparse` — MongoDB's sparse indexes do
-    index openly-stored `null`, so the second server-generated keyless document
-    (e.g. a second account balance correction) used to collide with E11000.
-    Controllers `$unset` the field on keyless creates so those docss are
-    omitted from the index entirely (compatible with a pre-existing sparse
-    index too, which skips absent fields).
+  - **Keyless creates in the specs.** The idempotency index is `sparse + unique`.
+    Every create stores a **real string key**: the client's `Idempotency-Key`
+    header when present, otherwise a **server-generated UUID** (account create,
+    transaction create, template create, and the balance-correction path). This
+    is a hard invariant — a document must never hold an explicit `null`
+    `idempotencyKey`, because MongoDB's sparse unique index indexes a stored
+    `null`, so a second one would collide with E11000 (a stale `null` from a
+    pre-fix correction already occupies that slot in deployed databases, so the
+    `$unset`-after-create approach could never work — the insert itself failed).
   - **Final failure:** the user is notified via a browser `alert()`, and the
     failed request (method, URL, body, status/error, timestamp, capped at ~50
     entries) is appended to a `localStorage` log.

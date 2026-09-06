@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import TransactionTemplate from "../models/TransactionTemplate.js";
 import { loadOwnedAccountsMap } from "../lib/balanceEngine.js";
 
@@ -101,13 +102,11 @@ export async function createTemplate(req, res) {
     const template = await TransactionTemplate.create({
       userId: req.userId,
       ...candidate,
-      ...(idempotencyKey ? { idempotencyKey } : {}),
+      // A key is ALWAYS stored: header key if present, otherwise a server
+      // generated one. Never a null - a sparse-unique index would index an
+      // explicit null and collide with a later one.
+      idempotencyKey: idempotencyKey || randomUUID(),
     });
-    // Keyless creates must NOT persist an explicit null so the unique
-    // idempotency index never collides on later keyless documents.
-    if (!idempotencyKey) {
-      await TransactionTemplate.updateOne({ _id: template._id }, { $unset: { idempotencyKey: 1 } });
-    }
     return res.status(201).json(template);
   } catch (err) {
     if (idempotencyKey && err && err.code === 11000) {

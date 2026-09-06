@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Account from "../models/Account.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
@@ -61,13 +62,11 @@ export async function createAccount(req, res) {
       balance,
       limit: LIMIT_TYPES.includes(type) ? limit : null,
       note,
-      ...(idempotencyKey ? { idempotencyKey } : {}),
+      // A key is ALWAYS stored: header key if present, otherwise a server
+      // generated one. Never a null - a sparse-unique index would index an
+      // explicit null and collide with a later one.
+      idempotencyKey: idempotencyKey || randomUUID(),
     });
-    // Keyless creates must NOT persist an explicit null so the unique
-    // idempotency index never collides on later keyless documents.
-    if (!idempotencyKey) {
-      await Account.updateOne({ _id: account._id }, { $unset: { idempotencyKey: 1 } });
-    }
     return res.status(201).json(account);
   } catch (err) {
     // Unlikely concurrent duplicate on the same key: treat as an idempotent success.
@@ -139,11 +138,12 @@ export async function updateAccount(req, res) {
       subCategory: "Discrepancy",
       primaryAccount: account._id,
       primaryAmount: amount,
+      // Server-generated creates still store a real key: inserting an explicit
+      // null would collide with the sparse-unique index (a stored null IS
+      // indexed; only an absent field is skipped) - and a stale null from a
+      // pre-fix correction already occupies that slot.
+      idempotencyKey: randomUUID(),
     });
-    // This create is keyless SERVER-generated: drop the persisted null so the
-    // unique idempotency index can't collide with the NEXT correction (sparse
-    // indexes a stored null; only an absent field is skipped).
-    await Transaction.updateOne({ _id: transaction._id }, { $unset: { idempotencyKey: 1 } });
     try {
       const accountsMap = new Map([[String(account._id), account]]);
       const effects = computeEffects(transaction, accountsMap);

@@ -23,12 +23,10 @@ const templateSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Partial (not sparse) unique index: sparse indexes a stored null, so two
-// keyless documents would collide; a partial filter only indexes docs whose
-// key is a real string.
-templateSchema.index(
-  { idempotencyKey: 1 },
-  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
-);
+// Sparse + unique idempotency key. Controllers ALWAYS store a real string key
+// (client header or a server-generated UUID), so nulls never enter the index;
+// if one ever did, a stored null IS indexed by a sparse index, so two would
+// collide (E11000) - the never-null invariant must hold.
+templateSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("TransactionTemplate", templateSchema);

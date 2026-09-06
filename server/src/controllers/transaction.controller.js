@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import { computeEffects, reverseEffects, applyEffects, loadOwnedAccountsMap, assertWithinCreditLimits } from "../lib/balanceEngine.js";
@@ -120,12 +121,14 @@ export async function createTransaction(req, res) {
 
   let transaction;
   try {
-    transaction = await Transaction.create({ userId: req.userId, ...candidate, ...(idempotencyKey ? { idempotencyKey } : {}) });
-    // Keyless creates (e.g. server-generated corrections) must NOT persist an
-    // explicit null: a sparse/partial unique index would collide on the 2nd one.
-    if (!idempotencyKey) {
-      await Transaction.updateOne({ _id: transaction._id }, { $unset: { idempotencyKey: 1 } });
-    }
+    transaction = await Transaction.create({
+      userId: req.userId,
+      ...candidate,
+      // A key is ALWAYS stored: header key if present, otherwise a server
+      // generated one. Never a null - a sparse-unique index would index an
+      // explicit null and collide with a later one.
+      idempotencyKey: idempotencyKey || randomUUID(),
+    });
   } catch (err) {
     // Unlikely concurrent duplicate on the same key: treat as an idempotent success.
     if (idempotencyKey && err && err.code === 11000) {
