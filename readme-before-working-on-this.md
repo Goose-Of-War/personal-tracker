@@ -323,6 +323,11 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
    - Balances update promptly after add/edit/delete (via API response or refetch).
 
 5. **Profile page** (new)
+   - **Organised into three tabs (since 2026-09-05), only one visible at a
+     time:** **Preferences** (Currency + Colour theme), **Categories**
+     (category/sub-category manager), **Templates** (saved transaction
+     templates). Tab bar at the top; active tab highlighted; default =
+     Preferences.
    - Manage the user's `categories` list: add/rename/remove categories and their
      subcategories.
    - Exact route/endpoint for updating categories not yet fixed (e.g. `PATCH
@@ -677,9 +682,9 @@ implementation as above.
   filters. The applied filters are mirrored into the browser address bar via
   `history.replaceState` (`?type=&category=&primaryAccount=&secondaryAccount=&
   min=&max=`) and re-read from `window.location.search` on mount, so a filtered
-  view survives refresh and is shareable. Accepted limitation: because listing
-  is server-paginated (20/page), in-memory filters only see the currently
-  loaded page.
+  view survives refresh and is shareable. Both the filters and pagination run
+  against the **whole fetched month** (the page downloads all of it, then slices
+  20 at a time client-side — no per-page refetch).
 - **(Transaction templates — implemented 2026-09-05):** save a
   transaction as a reusable template, then start a new transaction from one
   instead of typing everything. Backed by a **new collection** (Mongoose
@@ -762,9 +767,12 @@ All requested on 2026-08-30 have been implemented:
     min/max); filters apply in-memory to the currently loaded page and are
     mirrored into the address bar (`?type=&category=&primaryAccount=&
     secondaryAccount=&min=&max=`) via `history.replaceState`, then restored
-    from the URL on mount so a filtered view survives refresh/sharing. Accepted
-    limitation: with server-side pagination (20/page) in-memory filters only
-    see the loaded page.
+    from the URL on mount so a filtered view survives refresh/sharing.
+    - **Whole-month fetch (2026-09-05):** the page downloads the ENTIRE
+      selected month (loops server pages of 100 until `total` is reached) into
+      state, then filters + paginates **client-side at 20/page**. Filters run
+      against the full month (not a single server page), and Next/Prev are
+      purely local — no refetch.
 11. **Transaction templates.** New `transactiontemplates` collection
     (`TransactionTemplate` model): per-user named blueprints holding the full
     transaction shape (type, category, subCategory, accounts, amounts, note) —

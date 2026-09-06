@@ -515,6 +515,37 @@ label {
 .template-manage-list li button { flex: 0 0 auto; }
 
 /* Profile / category manager */
+.profile-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0 1.5rem 1.5rem;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.profile-tab {
+  flex: 1;
+  background: none;
+  color: var(--muted);
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+}
+.profile-tab--active {
+  background: var(--accent);
+  color: white;
+}
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 0 1.5rem;
+}
+.profile-section .category-manager {
+  margin: 0;
+}
+
 .theme-accent-row,
 .theme-mode-row {
   display: flex;

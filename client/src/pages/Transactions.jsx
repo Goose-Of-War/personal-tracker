@@ -8,15 +8,17 @@ import TransactionForm from "../components/TransactionForm.jsx";
 import { currentMonth, shiftMonth, monthLabel } from "../lib/monthNav.js";
 import { toSmallestUnit, accountDisplayName } from "../lib/money.js";
 
+// Server fetches happen at this page size, then loop until the whole month is
+// collected. The visible list is paginated client-side at PAGE_SIZE instead.
 const PAGE_SIZE = 20;
+const FETCH_LIMIT = 100;
 
 export default function Transactions() {
   const { user } = useAuth();
   const { accounts, refresh: refreshAccounts } = useAccounts();
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState([]); // the whole month
   const [month, setMonth] = useState(currentMonth());
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1); // client-side page of the filtered list
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(undefined); // undefined = closed, null = new, object = edit
@@ -46,6 +48,11 @@ export default function Transactions() {
 
   const hasActiveFilters = Object.values(filters).some((v) => v !== "");
 
+  // Reset to the first page whenever the filtered view changes.
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
+
   const filteredTransactions = useMemo(() => {
     if (!hasActiveFilters) return transactions;
     const minUnit = filters.min !== "" ? toSmallestUnit(filters.min) : null;
@@ -61,17 +68,30 @@ export default function Transactions() {
     });
   }, [transactions, filters, hasActiveFilters]);
 
+  // Client-side pagination: filter against the WHOLE month, then show 20 at a time.
+  const clientTotalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, clientTotalPages);
+  const pageSlice = filteredTransactions.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
+
   const clearFilters = () => setFilters({ type: "", category: "", primaryAccount: "", secondaryAccount: "", min: "", max: "" });
 
   const setFilter = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
 
-  const load = async (targetPage = page, targetMonth = month) => {
+  // Fetch the ENTIRE selected month (looping over server pages) so filters and
+  // pagination can both run on the full dataset in the frontend.
+  const load = async (targetMonth = month) => {
     setLoading(true);
     try {
-      const txData = await api.get(`/transactions?page=${targetPage}&limit=${PAGE_SIZE}&month=${targetMonth}`);
-      setTransactions(txData.items);
-      setTotalPages(txData.totalPages);
-      setPage(txData.page);
+      const items = [];
+      let serverPage = 1;
+      for (;;) {
+        const txData = await api.get(`/transactions?page=${serverPage}&limit=${FETCH_LIMIT}&month=${targetMonth}`);
+        items.push(...txData.items);
+        if (items.length >= txData.total) break;
+        serverPage += 1;
+      }
+      setTransactions(items);
+      setPage(1);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -80,7 +100,7 @@ export default function Transactions() {
   };
 
   useEffect(() => {
-    load(1, month);
+    load(month);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month]);
 
@@ -137,8 +157,8 @@ export default function Transactions() {
   };
 
   const goToPage = (p) => {
-    if (p < 1 || p > totalPages) return;
-    load(p, month);
+    if (p < 1 || p > clientTotalPages) return;
+    setPage(p);
   };
 
   return (
@@ -212,7 +232,7 @@ export default function Transactions() {
 
           {hasActiveFilters && (
             <p className="page-hint">
-              Showing {filteredTransactions.length} of {transactions.length} in this page.
+              Showing {filteredTransactions.length} of {transactions.length} transactions this month.
             </p>
           )}
 
@@ -220,22 +240,22 @@ export default function Transactions() {
             <p className="page-hint">No transactions match the current filters.</p>
           ) : (
             <TransactionList
-              transactions={filteredTransactions}
+              transactions={pageSlice}
               accountsById={accountsById}
               onSelect={setEditing}
               onDuplicate={setDuplicating}
             />
           )}
 
-          {totalPages > 1 && (
+          {clientTotalPages > 1 && (
             <div className="pagination">
-              <button className="button-secondary" onClick={() => goToPage(page - 1)} disabled={page <= 1}>
+              <button className="button-secondary" onClick={() => goToPage(clampedPage - 1)} disabled={clampedPage <= 1}>
                 Previous
               </button>
               <span>
-                Page {page} of {totalPages}
+                Page {clampedPage} of {clientTotalPages}
               </span>
-              <button className="button-secondary" onClick={() => goToPage(page + 1)} disabled={page >= totalPages}>
+              <button className="button-secondary" onClick={() => goToPage(clampedPage + 1)} disabled={clampedPage >= clientTotalPages}>
                 Next
               </button>
             </div>

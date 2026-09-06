@@ -34,6 +34,8 @@ export default function Profile() {
   const [themeError, setThemeError] = useState("");
   const [savingTheme, setSavingTheme] = useState(false);
   const [dragIndex, setDragIndex] = useState(null); // drag-and-drop reorder of categories
+  // Only one section is visible at a time (tabs above the content).
+  const [activeTab, setActiveTab] = useState("preferences");
   // Transaction templates (saved from the transaction form, managed here)
   const [templates, setTemplates] = useState([]);
   const [templatesError, setTemplatesError] = useState("");
@@ -166,174 +168,205 @@ export default function Profile() {
 
   const sortedSubs = (subs) => [...subs].sort((a, b) => a.localeCompare(b));
 
+  const TABS = [
+    { id: "preferences", label: "Preferences" },
+    { id: "categories", label: "Categories" },
+    { id: "templates", label: "Templates" },
+  ];
+
   return (
     <div className="page">
       <NavBar />
       <h1>Profile</h1>
-      <p className="page-hint">
-        Manage the categories and sub-categories available when recording transactions. Removing a
-        category here does not change any past transactions already using it.
-      </p>
 
-      {error && <p className="form-error">{error}</p>}
-
-      <div className="category-manager__group" style={{ marginBottom: "1.5rem" }}>
-        <div className="category-manager__group-header">
-          <strong>Currency</strong>
-        </div>
-        <p className="page-hint">One fixed currency for all amounts across the app.</p>
-        <select value={user?.currency || "INR"} onChange={handleCurrencyChange} disabled={savingCurrency}>
-          {COMMON_CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        {currencyError && <p className="form-error">{currencyError}</p>}
-      </div>
-
-      <div className="category-manager__group" style={{ marginBottom: "1.5rem" }}>
-        <div className="category-manager__group-header">
-          <strong>Colour theme</strong>
-        </div>
-        <p className="page-hint">Pick an accent colour and a light/dark mode — applies to every page.</p>
-        <div className="theme-accent-row">
-          {ACCENT_OPTIONS.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className={`theme-swatch${user?.themeAccent === a.id ? " theme-swatch--active" : ""}`}
-              onClick={() => handleAccentChange(a.id)}
-              disabled={savingTheme}
-              title={a.label}
-              aria-label={a.label}
-            >
-              <span className="theme-swatch__dot" style={{ backgroundColor: a.color }} />
-              {a.label}
-            </button>
-          ))}
-        </div>
-        <div className="theme-mode-row">
-          {MODE_OPTIONS.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className={`theme-mode${user?.themeMode === m.id ? " theme-mode--active" : ""}`}
-              onClick={() => handleModeChange(m.id)}
-              disabled={savingTheme}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        {themeError && <p className="form-error">{themeError}</p>}
-      </div>
-
-      <div className="category-manager__group" style={{ marginBottom: "1.5rem" }}>
-        <div className="category-manager__group-header">
-          <strong>Transaction templates</strong>
-        </div>
-        <p className="page-hint">
-          Saved from the transaction form ("Save as template"). Start a new transaction from one via the
-          "Start from a template" dropdown.
-        </p>
-        {templatesError && <p className="form-error">{templatesError}</p>}
-        {templates.length === 0 ? (
-          <p className="page-hint">No templates yet — open a new transaction and hit "Save as template".</p>
-        ) : (
-          <ul className="template-manage-list">
-            {templates.map((t) => (
-              <li key={t._id}>
-                <span className="template-manage-list__name">{t.name}</span>
-                <span className="template-manage-list__details">
-                  {t.type} · {t.category || "uncategorized"}
-                  {t.subCategory ? ` / ${t.subCategory}` : ""}
-                  {t.note ? ` — ${t.note}` : ""}
-                </span>
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => handleDeleteTemplate(t)}
-                  disabled={templateDeleting === t._id}
-                >
-                  {templateDeleting === t._id ? "…" : "Delete"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="category-manager">
-        {categories.map((c, index) => (
-          <div
-            key={c.name}
-            className={`category-manager__group${dragIndex === index ? " category-manager__group--dragging" : ""}`}
-            draggable
-            onDragStart={() => setDragIndex(index)}
-            onDragOver={(e) => {
-              // Required so a valid drop target registers; no reorder here (too laggy).
-              e.preventDefault();
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (dragIndex !== null && dragIndex !== index) reorderCategories(dragIndex, index);
-              else setDragIndex(null);
-            }}
-            onDragEnd={() => setDragIndex(null)}
+      <nav className="profile-tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`profile-tab${activeTab === t.id ? " profile-tab--active" : ""}`}
+            onClick={() => setActiveTab(t.id)}
           >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === "preferences" && (
+        <div className="profile-section">
+          <div className="category-manager__group">
             <div className="category-manager__group-header">
-              <strong>⠿ {c.name}</strong>
-              <button type="button" className="button-danger" onClick={() => removeCategory(c.name)} disabled={saving}>
-                Remove
-              </button>
+              <strong>Currency</strong>
             </div>
-
-            <ul className="category-manager__subs">
-              {sortedSubs(c.subCategories).map((s) => (
-                <li key={s}>
-                  {s}
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => removeSubCategory(c.name, s)}
-                    disabled={saving}
-                  >
-                    ×
-                  </button>
-                </li>
+            <p className="page-hint">One fixed currency for all amounts across the app.</p>
+            <select value={user?.currency || "INR"} onChange={handleCurrencyChange} disabled={savingCurrency}>
+              {COMMON_CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
               ))}
-              {c.subCategories.length === 0 && <li className="category-manager__empty">No sub-categories yet</li>}
-            </ul>
+            </select>
+            {currencyError && <p className="form-error">{currencyError}</p>}
+          </div>
 
-            <div className="category-manager__add-sub">
+          <div className="category-manager__group">
+            <div className="category-manager__group-header">
+              <strong>Colour theme</strong>
+            </div>
+            <p className="page-hint">Pick an accent colour and a light/dark mode — applies to every page.</p>
+            <div className="theme-accent-row">
+              {ACCENT_OPTIONS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`theme-swatch${user?.themeAccent === a.id ? " theme-swatch--active" : ""}`}
+                  onClick={() => handleAccentChange(a.id)}
+                  disabled={savingTheme}
+                  title={a.label}
+                  aria-label={a.label}
+                >
+                  <span className="theme-swatch__dot" style={{ backgroundColor: a.color }} />
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            <div className="theme-mode-row">
+              {MODE_OPTIONS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`theme-mode${user?.themeMode === m.id ? " theme-mode--active" : ""}`}
+                  onClick={() => handleModeChange(m.id)}
+                  disabled={savingTheme}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            {themeError && <p className="form-error">{themeError}</p>}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "categories" && (
+        <div className="profile-section">
+          <p className="page-hint">
+            Manage the categories and sub-categories available when recording transactions. Removing a
+            category here does not change any past transactions already using it.
+          </p>
+          {error && <p className="form-error">{error}</p>}
+
+          <div className="category-manager">
+            {categories.map((c, index) => (
+              <div
+                key={c.name}
+                className={`category-manager__group${dragIndex === index ? " category-manager__group--dragging" : ""}`}
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(e) => {
+                  // Required so a valid drop target registers; no reorder here (too laggy).
+                  e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIndex !== null && dragIndex !== index) reorderCategories(dragIndex, index);
+                  else setDragIndex(null);
+                }}
+                onDragEnd={() => setDragIndex(null)}
+              >
+                <div className="category-manager__group-header">
+                  <strong>⠿ {c.name}</strong>
+                  <button type="button" className="button-danger" onClick={() => removeCategory(c.name)} disabled={saving}>
+                    Remove
+                  </button>
+                </div>
+
+                <ul className="category-manager__subs">
+                  {sortedSubs(c.subCategories).map((s) => (
+                    <li key={s}>
+                      {s}
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => removeSubCategory(c.name, s)}
+                        disabled={saving}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                  {c.subCategories.length === 0 && <li className="category-manager__empty">No sub-categories yet</li>}
+                </ul>
+
+                <div className="category-manager__add-sub">
+                  <input
+                    value={newSubCategory[c.name] || ""}
+                    onChange={(e) => setNewSubCategory((s) => ({ ...s, [c.name]: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && addSubCategory(c.name)}
+                    placeholder="New sub-category"
+                  />
+                  <button type="button" className="button-secondary" onClick={() => addSubCategory(c.name)} disabled={saving}>
+                    Add
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {categories.length === 0 && <p className="page-hint">No categories yet — add one below.</p>}
+
+            <div className="category-manager__add-category">
               <input
-                value={newSubCategory[c.name] || ""}
-                onChange={(e) => setNewSubCategory((s) => ({ ...s, [c.name]: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && addSubCategory(c.name)}
-                placeholder="New sub-category"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addCategory()}
+                placeholder="New category name"
               />
-              <button type="button" className="button-secondary" onClick={() => addSubCategory(c.name)} disabled={saving}>
-                Add
+              <button type="button" onClick={addCategory} disabled={saving}>
+                + Add category
               </button>
             </div>
           </div>
-        ))}
-
-        {categories.length === 0 && <p className="page-hint">No categories yet — add one below.</p>}
-
-        <div className="category-manager__add-category">
-          <input
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addCategory()}
-            placeholder="New category name"
-          />
-          <button type="button" onClick={addCategory} disabled={saving}>
-            + Add category
-          </button>
         </div>
-      </div>
+      )}
+
+      {activeTab === "templates" && (
+        <div className="profile-section">
+          <div className="category-manager__group">
+            <div className="category-manager__group-header">
+              <strong>Transaction templates</strong>
+            </div>
+            <p className="page-hint">
+              Saved from the transaction form ("Save as template"). Start a new transaction from one via the
+              "Start from a template" dropdown.
+            </p>
+            {templatesError && <p className="form-error">{templatesError}</p>}
+            {templates.length === 0 ? (
+              <p className="page-hint">No templates yet — open a new transaction and hit "Save as template".</p>
+            ) : (
+              <ul className="template-manage-list">
+                {templates.map((t) => (
+                  <li key={t._id}>
+                    <span className="template-manage-list__name">{t.name}</span>
+                    <span className="template-manage-list__details">
+                      {t.type} · {t.category || "uncategorized"}
+                      {t.subCategory ? ` / ${t.subCategory}` : ""}
+                      {t.note ? ` — ${t.note}` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => handleDeleteTemplate(t)}
+                      disabled={templateDeleting === t._id}
+                    >
+                      {templateDeleting === t._id ? "…" : "Delete"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
