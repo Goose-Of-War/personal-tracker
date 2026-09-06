@@ -106,16 +106,28 @@ export default function Transactions() {
 
   const accountsById = new Map(accounts.map((a) => [a._id, a]));
 
+  // Mirrors the server's sort ({ date: -1, createdAt: -1 }) so optimistic adds
+  // and edits land in the right spot instead of sticking at the front.
+  const sortMonthly = (list) =>
+    [...list].sort((a, b) => {
+      const aDate = new Date(a.date).getTime();
+      const bDate = new Date(b.date).getTime();
+      if (aDate !== bDate) return bDate - aDate;
+      const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bCreated - aCreated;
+    });
+
   const handleSave = async (payload) => {
     if (editing && editing._id) {
       const id = editing._id;
       const snapshot = transactions;
       // Optimistic: apply the edit immediately.
-      setTransactions((cur) => cur.map((t) => (t._id === id ? { ...t, ...payload } : t)));
+      setTransactions((cur) => sortMonthly(cur.map((t) => (t._id === id ? { ...t, ...payload } : t))));
       try {
         const saved = await api.patch(`/transactions/${id}`, payload);
         // Reconcile with the server's authoritative response.
-        setTransactions((cur) => cur.map((t) => (t._id === id ? saved : t)));
+        setTransactions((cur) => sortMonthly(cur.map((t) => (t._id === id ? saved : t))));
         await refreshAccounts();
       } catch (err) {
         setTransactions(snapshot);
@@ -125,14 +137,16 @@ export default function Transactions() {
       const snapshot = transactions;
       const tempId = `temp-${Date.now()}`;
       // Optimistic: show the new transaction while the request is in flight.
-      setTransactions((cur) => [
-        { _id: tempId, date: payload.date ? new Date(payload.date) : new Date(), ...payload },
-        ...cur,
-      ]);
+      setTransactions((cur) =>
+        sortMonthly([
+          { _id: tempId, createdAt: new Date().toISOString(), date: payload.date ? new Date(payload.date) : new Date(), ...payload },
+          ...cur,
+        ])
+      );
       try {
         const created = await api.post("/transactions", payload);
         // Swap the temp entry for the real one (keeps its position).
-        setTransactions((cur) => cur.map((t) => (t._id === tempId ? created : t)));
+        setTransactions((cur) => sortMonthly(cur.map((t) => (t._id === tempId ? created : t))));
         await refreshAccounts();
       } catch (err) {
         setTransactions(snapshot);
