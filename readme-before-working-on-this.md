@@ -79,8 +79,9 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
   3 note about free text for v1.
 - New users get a default seed list on signup — **confirmed final**: Food, Transport,
   Bills & Utilities, Shopping, Health, Entertainment, Income, Correction, Other, each
-  with a few starter subcategories. `Correction` (no subcategories) is required and
-  used by automated balance-correction transactions, see §3a.
+  with a few starter subcategories. `Correction` (seeded with the `Discrepancy`
+  subcategory) is required and used by automated balance-correction transactions,
+  see §3a.
 - Managed via the new Profile page (see section 4) — add/rename/remove categories and
   subcategories.
 - **Deleting a category/subCategory still referenced by existing transactions**
@@ -208,12 +209,16 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
   overlay / account PATCH endpoint) is gated by a **"Note the correction as a
   transaction" checkbox** (default checked / true) in the edit overlay:
   - **Checked (default)**: it's translated into an automatically-created
-    transaction — category `Correction`, dated now — that goes through the normal
+    transaction — category `Correction`, subcategory `Discrepancy`, dated now —
+    that goes through the normal
     `computeEffects`/`applyEffects` pipeline like any other transaction. This keeps
     `balanceEngine.js` the single place that ever changes a balance, and means
     correction transactions show up in the Transactions list and can be
     edited/deleted exactly like any other transaction (reverse-then-reapply works
-    correctly).
+    correctly). Corrections are **excluded from all expense/deposit statistics**
+    (Home stacked bar + daily averages, Dashboard summary/category breakdown/daily
+    trend): they're balance adjustments, not spending or income, so they mustn't
+    skew tracking.
   - **Unchecked**: the balance is written **directly** on the account — the
     "legacy way" from before this feature existed — with **no** transaction
     generated and no credit-limit cap check. This is the opt-out.
@@ -236,7 +241,9 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
   list (§1a) — see below. If an existing user's list doesn't have it yet (accounts
   created before this feature existed), it's added automatically the first time a
   correction transaction is generated for them, so the category-membership
-  validation in §3's Rules never rejects it.
+  validation in §3's Rules never rejects it. Likewise, the `Discrepancy`
+  subcategory is added to their `Correction` category on the first correction if
+  it's missing (old users seeded before `Discrepancy` existed).
 
 ---
 
@@ -264,7 +271,7 @@ Standard CRUD, session-cookie auth, three pages (Home, Accounts, Transactions).
        amounts) sits under the bar.
      - The **total expense amount** for the month, with the **average expense per
        active day in brackets** (daily avg = month total ÷ number of distinct
-       days with at least one transaction, expense/income/transfer alike).
+       days with at least one non-Correction transaction, expense/income/transfer alike).
      - Beside it, the **% increase/decrease vs the previous month** as small
        text, with a **red upward ▲** when up and a **green downward ▼** when
        down; **the % number itself renders in black** (only the triangle is
@@ -668,6 +675,14 @@ implementation as above.
     return the existing document instead of creating a duplicate — so a retried
     create can never double-write. Covered operations: account create,
     transaction create.
+  - **Keyless creates never persist an explicit `null`:** the idempotency index
+    is a **partial** unique index (`partialFilterExpression: { idempotencyKey:
+    { $type: "string" } }`) rather than `sparse` — MongoDB's sparse indexes do
+    index openly-stored `null`, so the second server-generated keyless document
+    (e.g. a second account balance correction) used to collide with E11000.
+    Controllers `$unset` the field on keyless creates so those docss are
+    omitted from the index entirely (compatible with a pre-existing sparse
+    index too, which skips absent fields).
   - **Final failure:** the user is notified via a browser `alert()`, and the
     failed request (method, URL, body, status/error, timestamp, capped at ~50
     entries) is appended to a `localStorage` log.

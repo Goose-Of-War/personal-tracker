@@ -23,6 +23,12 @@ const templateSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-templateSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
+// Partial (not sparse) unique index: sparse indexes a stored null, so two
+// keyless documents would collide; a partial filter only indexes docs whose
+// key is a real string.
+templateSchema.index(
+  { idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+);
 
 export default mongoose.model("TransactionTemplate", templateSchema);

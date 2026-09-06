@@ -22,6 +22,12 @@ const transactionSchema = new mongoose.Schema(
 
 transactionSchema.index({ userId: 1, primaryAccount: 1, date: -1 });
 transactionSchema.index({ userId: 1, date: -1 });
-transactionSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
+// Partial (not sparse) unique index: sparse indexes a stored null, so two
+// keyless documents (e.g. server-generated balance corrections) would collide;
+// a partial filter only indexes docs whose key is a real string.
+transactionSchema.index(
+  { idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+);
 
 export default mongoose.model("Transaction", transactionSchema);

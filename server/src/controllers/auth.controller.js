@@ -20,7 +20,7 @@ const DEFAULT_CATEGORIES = [
   { name: "Health", subCategories: ["Pharmacy", "Doctor"] },
   { name: "Entertainment", subCategories: [] },
   { name: "Income", subCategories: ["Salary", "Interest"] },
-  { name: "Correction", subCategories: [] },
+  { name: "Correction", subCategories: ["Discrepancy"] },
   { name: "Other", subCategories: [] },
 ];
 

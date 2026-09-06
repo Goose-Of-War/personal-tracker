@@ -31,19 +31,25 @@ export async function getDashboard(req, res) {
     { $match: { userId, date: { $gte: start, $lt: end } } },
     {
       $facet: {
-        totalsByType: [{ $group: { _id: "$type", total: { $sum: "$primaryAmount" } } }],
+        // Corrections are excluded from every facet: they're balance
+        // adjustments, not spending/income, so they mustn't skew the summary,
+        // category breakdowns, or daily-expense trend.
+        totalsByType: [
+          { $match: { category: { $ne: "Correction" } } },
+          { $group: { _id: "$type", total: { $sum: "$primaryAmount" } } },
+        ],
         expensesByCategory: [
-          { $match: { type: "expense" } },
+          { $match: { type: "expense", category: { $ne: "Correction" } } },
           { $group: { _id: { $ifNull: ["$category", ""] }, total: { $sum: "$primaryAmount" } } },
           { $sort: { total: -1 } },
         ],
         depositsByCategory: [
-          { $match: { type: "deposit" } },
+          { $match: { type: "deposit", category: { $ne: "Correction" } } },
           { $group: { _id: { $ifNull: ["$category", ""] }, total: { $sum: "$primaryAmount" } } },
           { $sort: { total: -1 } },
         ],
         dailyExpenses: [
-          { $match: { type: "expense" } },
+          { $match: { type: "expense", category: { $ne: "Correction" } } },
           { $group: { _id: { $dayOfMonth: { date: "$date", timezone: "UTC" } }, total: { $sum: "$primaryAmount" } } },
           { $sort: { _id: 1 } },
         ],

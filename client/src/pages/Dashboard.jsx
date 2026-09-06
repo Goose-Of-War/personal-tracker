@@ -8,6 +8,16 @@ import { formatMoney } from "../lib/money.js";
 
 const SLICE_COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#06b6d4", "#a855f7", "#ec4899", "#84cc16"];
 const CHART_ANIMATION_MS = 500;
+// Recharts' default tooltip is hard-coded white-on-dark-border; override it with
+// the theme variables so hovers follow light/dark mode like the rest of the app.
+const TOOLTIP_CONTENT_STYLE = {
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  color: "var(--text)",
+};
+const TOOLTIP_ITEM_STYLE = { color: "var(--text)" };
+const TOOLTIP_LABEL_STYLE = { color: "var(--text)", fontWeight: 600 };
 
 function BreakdownBlock({ title, rows, currency }) {
   const total = rows.reduce((sum, row) => sum + row.total, 0);
@@ -21,7 +31,7 @@ function BreakdownBlock({ title, rows, currency }) {
               <Cell key={i} fill={SLICE_COLORS[i % SLICE_COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip formatter={(value) => formatMoney(value, currency)} />
+          <Tooltip formatter={(value) => formatMoney(value, currency)} contentStyle={TOOLTIP_CONTENT_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} />
         </PieChart>
       </ResponsiveContainer>
       <table className="dashboard-table">
@@ -155,7 +165,14 @@ export default function Dashboard() {
                 <LineChart data={dailyTrend}>
                   <XAxis dataKey="day" />
                   <YAxis tickFormatter={(v) => formatMoney(v, currency)} width={80} />
-                  <Tooltip formatter={(value) => formatMoney(value, currency)} labelFormatter={(d) => `Day ${d}`} />
+                  <Tooltip
+                    formatter={(value) => formatMoney(value, currency)}
+                    labelFormatter={(d) => `Day ${d}`}
+                    cursor={{ stroke: "var(--border)" }}
+                    contentStyle={TOOLTIP_CONTENT_STYLE}
+                    itemStyle={TOOLTIP_ITEM_STYLE}
+                    labelStyle={TOOLTIP_LABEL_STYLE}
+                  />
                   <ReferenceLine
                     y={avgDailyExpense}
                     stroke="#8f2f4f"
@@ -174,9 +191,13 @@ export default function Dashboard() {
               <BarChart data={typeComparisonData}>
                 <XAxis dataKey="name" />
                 <YAxis tickFormatter={(v) => formatMoney(v, currency)} width={80} />
-                <Tooltip formatter={(value) => formatMoney(value, currency)} />
+                <Tooltip formatter={(value) => formatMoney(value, currency)} contentStyle={TOOLTIP_CONTENT_STYLE} itemStyle={TOOLTIP_ITEM_STYLE} labelStyle={TOOLTIP_LABEL_STYLE} />
                 <Legend />
-                <Bar dataKey="value" name="Total" fill="#22c55e" animationDuration={CHART_ANIMATION_MS} />
+                <Bar dataKey="value" name="Total" animationDuration={CHART_ANIMATION_MS}>
+                  <Cell fill="var(--negative)" />
+                  <Cell fill="var(--positive)" />
+                  <Cell fill="var(--text)" />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </section>

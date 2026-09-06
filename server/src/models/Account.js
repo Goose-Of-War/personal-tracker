@@ -18,6 +18,12 @@ const accountSchema = new mongoose.Schema(
 );
 
 accountSchema.index({ userId: 1, archived: 1 });
-accountSchema.index({ idempotencyKey: 1 }, { unique: true, sparse: true });
+// Partial (not sparse) unique index: sparse indexes a stored null, so two
+// keyless documents (e.g. server-generated balance corrections) would collide;
+// a partial filter only indexes docs whose key is a real string.
+accountSchema.index(
+  { idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+);
 
 export default mongoose.model("Account", accountSchema);

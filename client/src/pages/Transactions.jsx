@@ -59,7 +59,12 @@ export default function Transactions() {
     const maxUnit = filters.max !== "" ? toSmallestUnit(filters.max) : null;
     return transactions.filter((t) => {
       if (filters.type && t.type !== filters.type) return false;
-      if (filters.category && (t.category || "") !== filters.category) return false;
+      // Sentinel: matches transactions whose category is blank ("Uncategorized").
+      if (filters.category === "__uncategorized__") {
+        if ((t.category || "").trim() !== "") return false;
+      } else if (filters.category && (t.category || "") !== filters.category) {
+        return false;
+      }
       if (filters.primaryAccount && String(t.primaryAccount) !== filters.primaryAccount) return false;
       if (filters.secondaryAccount && String(t.secondaryAccount || "") !== filters.secondaryAccount) return false;
       if (minUnit !== null && t.primaryAmount < minUnit) return false;
@@ -218,6 +223,7 @@ export default function Transactions() {
                   {c.name}
                 </option>
               ))}
+              <option value="__uncategorized__">Uncategorized</option>
             </select>
             <select value={filters.primaryAccount} onChange={setFilter("primaryAccount")} aria-label="Primary account">
               <option value="">Any account</option>

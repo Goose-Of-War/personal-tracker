@@ -19,7 +19,7 @@ function DeltaBadge({ delta }) {
       >
         {up ? "▲" : "▼"}
       </span>
-      <span className="home-delta__pct">{Math.abs(delta).toFixed(1)}%</span>
+      <span className="home-delta__pct">{Math.abs(delta).toFixed(1)}% {up ? "more" : "less"} than last month</span>
     </span>
   );
 }

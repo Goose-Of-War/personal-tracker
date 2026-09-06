@@ -332,6 +332,15 @@ label {
   border-bottom: 1px solid var(--border);
 }
 .dashboard-table__total { font-weight: 700; }
+.diagnostics-body {
+  margin: 0;
+  max-width: 280px;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
 @media (max-width: 640px) {
   .dashboard-columns { grid-template-columns: 1fr; }
   .dashboard-breakdown { grid-template-columns: 1fr; }
@@ -416,6 +425,7 @@ label {
 .overlay-card h2 { margin-top: 0; }
 .overlay-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.5rem;

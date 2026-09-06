@@ -63,6 +63,11 @@ export async function createAccount(req, res) {
       note,
       ...(idempotencyKey ? { idempotencyKey } : {}),
     });
+    // Keyless creates must NOT persist an explicit null so the unique
+    // idempotency index never collides on later keyless documents.
+    if (!idempotencyKey) {
+      await Account.updateOne({ _id: account._id }, { $unset: { idempotencyKey: 1 } });
+    }
     return res.status(201).json(account);
   } catch (err) {
     // Unlikely concurrent duplicate on the same key: treat as an idempotent success.
@@ -111,9 +116,17 @@ export async function updateAccount(req, res) {
   const delta = balance !== undefined ? balance - account.balance : 0;
   const logCorrection = req.body.logCorrection; // true/undefined => Correction transaction; false => legacy direct write
   if (delta !== 0 && logCorrection !== false) {
+    // Balance corrections are logged under the mandatory `Correction` category's
+    // `Discrepancy` subcategory. Seed the subcategory if it's missing so the
+    // transaction always has a valid (category, subCategory) pair.
     const user = await User.findById(req.userId).select("categories");
-    if (!user.categories.some((c) => c.name === "Correction")) {
-      user.categories.push({ name: "Correction", subCategories: [] });
+    const correction = user.categories.find((c) => c.name === "Correction");
+    if (!correction) {
+      user.categories.push({ name: "Correction", subCategories: ["Discrepancy"] });
+      await user.save();
+    } else if (!correction.subCategories.includes("Discrepancy")) {
+      correction.subCategories.push("Discrepancy");
+      user.markModified("categories");
       await user.save();
     }
 
@@ -123,10 +136,14 @@ export async function updateAccount(req, res) {
       type: txType,
       date: new Date(),
       category: "Correction",
-      subCategory: "",
+      subCategory: "Discrepancy",
       primaryAccount: account._id,
       primaryAmount: amount,
     });
+    // This create is keyless SERVER-generated: drop the persisted null so the
+    // unique idempotency index can't collide with the NEXT correction (sparse
+    // indexes a stored null; only an absent field is skipped).
+    await Transaction.updateOne({ _id: transaction._id }, { $unset: { idempotencyKey: 1 } });
     try {
       const accountsMap = new Map([[String(account._id), account]]);
       const effects = computeEffects(transaction, accountsMap);

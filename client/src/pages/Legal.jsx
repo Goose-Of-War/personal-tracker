@@ -1,12 +1,12 @@
-import { Link } from "react-router-dom";
+import NavBar from "../components/NavBar.jsx";
 
 export default function Legal() {
   return (
     <div className="page">
-      <Link to="/login" className="link-button">
-        ← Back
-      </Link>
-      <h1>Privacy Policy &amp; Terms of Use</h1>
+      <NavBar />
+      <div className="page-header">
+        <h1>Privacy Policy &amp; Terms of Use</h1>
+      </div>
       <p className="page-hint">
         Last updated: whenever we remembered to write this. Read it, don't read it — either way,
         by using this app you're agreeing to it.

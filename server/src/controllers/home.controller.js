@@ -19,11 +19,13 @@ function monthRanges() {
 }
 
 // Number of distinct calendar days (UTC) in [start, end) that have at least one
-// transaction — of ANY type (expense, income/deposit, transfer…). Averaging over
-// "days with activity" rather than calendar days is the user's chosen definition.
+// non-Correction transaction — of ANY type (expense, income/deposit, transfer…).
+// Averaging over "days with activity" rather than calendar days is the user's
+// chosen definition. Corrections are excluded per spec: they're balance
+// adjustments, not spending, so they mustn't skew the daily-expense average.
 async function daysWithTransactions(userId, start, end) {
   const rows = await Transaction.aggregate([
-    { $match: { userId, date: { $gte: start, $lt: end } } },
+    { $match: { userId, date: { $gte: start, $lt: end }, category: { $ne: "Correction" } } },
     { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } } } },
     { $count: "days" },
   ]);
@@ -31,9 +33,10 @@ async function daysWithTransactions(userId, start, end) {
 }
 
 // Sum expenses by category for one month range, ordered by total desc.
+// Corrections are excluded: they're balance adjustments, not spending.
 async function expenseByCategory(userId, start, end) {
   const rows = await Transaction.aggregate([
-    { $match: { userId, type: "expense", date: { $gte: start, $lt: end } } },
+    { $match: { userId, type: "expense", category: { $ne: "Correction" }, date: { $gte: start, $lt: end } } },
     {
       $group: {
         _id: { $ifNull: ["$category", ""] },

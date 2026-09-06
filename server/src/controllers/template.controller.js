@@ -103,6 +103,11 @@ export async function createTemplate(req, res) {
       ...candidate,
       ...(idempotencyKey ? { idempotencyKey } : {}),
     });
+    // Keyless creates must NOT persist an explicit null so the unique
+    // idempotency index never collides on later keyless documents.
+    if (!idempotencyKey) {
+      await TransactionTemplate.updateOne({ _id: template._id }, { $unset: { idempotencyKey: 1 } });
+    }
     return res.status(201).json(template);
   } catch (err) {
     if (idempotencyKey && err && err.code === 11000) {

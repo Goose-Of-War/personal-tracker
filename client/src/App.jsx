@@ -9,6 +9,7 @@ import Transactions from "./pages/Transactions.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Profile from "./pages/Profile.jsx";
 import Legal from "./pages/Legal.jsx";
+import Diagnostics from "./pages/Diagnostics.jsx";
 
 export default function App() {
   return (
@@ -55,6 +56,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/diagnostics/errors"
+              element={
+                <ProtectedRoute>
+                  <Diagnostics />
                 </ProtectedRoute>
               }
             />
